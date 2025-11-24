@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniCards</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen">
+
+    <div id="app-container" class="container max-w-4xl mx-auto p-4 sm:p-8">
+
+        <div class="flex justify-end mb-4">
+            <div id="auth-container" class="flex items-center space-x-3">
+                <span id="user-display-name" class="text-sm text-gray-600 hidden"></span>
+                <img id="user-avatar" src="" alt="Avatar" class="w-8 h-8 rounded-full hidden border border-gray-300">
+                <button id="login-btn" class="bg-white text-gray-700 border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-50 transition shadow-sm">
+                    Login mit Google
+                </button>
+                <button id="logout-btn" class="hidden text-red-500 text-sm hover:underline">
+                    Logout
+                </button>
+            </div>
+        </div>
+        
+        <h1 class="text-4xl font-bold text-center text-blue-700 mb-8">OmniCards</h1>
+        <div id="firebase-error-container"></div>
+
+        <div id="dashboard-view" class="space-y-6">
+            <div class="flex space-x-4 border-b border-gray-200 pb-2">
+                <button id="tab-my-decks" class="px-4 py-2 text-blue-600 font-bold border-b-2 border-blue-600 focus:outline-none">
+                    Meine Decks
+                </button>
+                <button id="tab-community" class="px-4 py-2 text-gray-500 hover:text-gray-700 focus:outline-none">
+                    Community / Marktplatz
+                </button>
+            </div>
+
+            <div id="my-decks-section">
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-gray-600">Lerne deine eigenen Karten.</p>
+                    <button id="create-deck-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm">
+                        + Neues Deck
+                    </button>
+                </div>
+                <div id="deck-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    </div>
+            </div>
+
+            <div id="community-section" class="hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-gray-600">Entdecke Decks von anderen Nutzern und importiere sie.</p>
+                    </div>
+                <div id="public-deck-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-6 bg-gray-50 rounded-lg text-center text-gray-500">
+                        Lade Community Decks...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="study-view" class="hidden">
+            
+            <button id="back-to-dashboard-btn" class="mb-4 text-gray-500 hover:text-blue-600 flex items-center">
+                ← Zurück zur Übersicht
+            </button>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Neue Karte hinzufügen</h2>
+                <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Neue Karte hinzufügen</h2>
+
+                    <form id="add-card-form" class="space-y-4">
+                        <div id="dynamic-fields-container" class="grid grid-cols-1 gap-4">
+                            </div>
+                        <div class="pt-2">
+                            <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow">
+                                Karte hinzufügen
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="study-message" class="mt-4 text-center font-medium text-blue-600 min-h-[1.5rem]"></div>
+                </div>
+                <div id="study-message" class="mt-4 text-center font-medium text-blue-600 min-h-[1.5rem]"></div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8 relative">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">Lernen</h2>
+                    <div id="review-count-container" class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full cursor-pointer hover:bg-blue-200 transition" title="Klicken, um Warteschlange zu sehen">
+                        Warteschlange: <span id="review-count">0</span>
+                    </div>
+                </div>
+
+                <div class="scene w-full h-64 perspective-1000 my-6 cursor-pointer group" onclick="flipCard()"> <div id="card-inner" class="card-inner w-full h-full relative text-center transition-transform duration-600 transform-style-3d shadow-xl rounded-xl border border-gray-200 bg-white">
+                        <div class="card-front absolute w-full h-full backface-hidden flex items-center justify-center flex-col bg-white rounded-xl">
+                            <div id="card-front-text" class="text-4xl font-bold text-gray-800 p-4">
+                                Lade...
+                            </div>
+                            <p class="text-xs text-gray-400 mt-4">(Klicken zum Umdrehen)</p>
+                        </div>
+                        <div class="card-back absolute w-full h-full backface-hidden transform rotate-y-180 flex items-center justify-center flex-col bg-blue-50 rounded-xl border-2 border-blue-100">
+                            <div id="card-back-content">
+                                </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-center mt-6 h-12">
+                    <button id="show-button" class="bg-indigo-600 text-white px-8 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md w-full sm:w-auto">
+                        Lösung anzeigen
+                    </button>
+                    
+                    <div id="feedback-buttons" class="hidden space-x-4 w-full sm:w-auto justify-center">
+                        <button id="wrong-button" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition shadow flex-1 sm:flex-none">
+                            Falsch / Nicht gewusst
+                        </button>
+                        <button id="right-button" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition shadow flex-1 sm:flex-none">
+                            Richtig / Gewusst
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-4 text-center">
+                    <button id="rebuild-queue-btn" class="text-xs text-gray-400 hover:text-gray-600 underline">
+                        Stapel neu mischen (Reset)
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xl font-semibold text-gray-700">Alle meine Karten (<span id="deck-count">0</span>)</h2>
+                    <div class="flex space-x-2">
+                        <button id="open-settings-btn" class="text-gray-500 hover:text-gray-700 p-2">
+                            ⚙️
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr id="card-table-head">
+                                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                                <th data-sort="german" id="sort-german" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700">
+                                    Vorderseite <span class="sort-indicator"></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Rückseite
+                                </th>
+                                <th data-sort="pinyin" id="sort-pinyin" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700">
+                                    Info <span class="sort-indicator"></span>
+                                </th>
+                                <th data-sort="level" id="sort-level" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700">
+                                    Level <span class="sort-indicator"></span>
+                                </th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="card-list-body" class="bg-white divide-y divide-gray-200">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white w-full max-w-md p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold">Einstellungen</h2>
+                <button id="close-settings-btn" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Settings Options -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                        <label for="storage-toggle" class="font-medium text-gray-700">Cloud-Speicher (Firebase)</label>
+                        <p class="text-sm text-gray-500">Benötigt eine aktive Cloud-Umgebung.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="storage-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="font-medium text-gray-700">Lokale Daten importieren</label>
+                            <p class="text-sm text-gray-500">Kopiert alle Karten vom lokalen Speicher in die Cloud.</p>
+                        </div>
+                        <button id="sync-local-to-cloud-btn" class="px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow flex-shrink-0">
+                            Jetzt synchronisieren
+                        </button>
+                    </div>
+                    <p id="sync-message" class="text-xs text-blue-600 mt-2 h-4"></p> <!-- Feedback-Zeile -->
+                </div>
+                <!-- Future settings can be added here -->
+            </div>
+
+            <p class="text-xs text-gray-500 mt-6">
+                Änderungen am Speicherort erfordern ein Neuladen der Seite (wird automatisch durchgeführt).
+            </p>
+        </div>
+    </div>
+
+    <!-- Edit Card Modal -->
+    <div id="edit-card-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white w-full max-w-lg p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold">Karte bearbeiten</h2>
+                <button id="close-edit-modal-btn" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="edit-card-form" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="edit-front" class="block text-sm font-medium text-gray-700 mb-1">Vorderseite (Frage)</label>
+                    <input type="text" id="edit-front" name="front" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="z.B. Haus oder $$ \int x dx $$">
+                </div>
+                <div>
+                    <label for="edit-back" class="block text-sm font-medium text-gray-700 mb-1">Rückseite (Antwort)</label>
+                    <input type="text" id="edit-back" name="back" required class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Antwort...">
+                </div>
+                
+                <div id="edit-extra-field-container">
+                    <label for="edit-extra" class="block text-sm font-medium text-gray-700 mb-1">Zusatz (z.B. Pinyin)</label>
+                    <div class="flex">
+                        <input type="text" id="edit-extra" name="extra" class="w-full p-2 border border-gray-300 rounded-l-lg focus:ring-blue-500 focus:border-blue-500" placeholder="Optional">
+                        <button type="button" id="convert-edit-pinyin-btn" class="px-3 py-2 bg-gray-200 text-gray-700 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-300 transition-colors text-sm">
+                            Wandeln
+                        </button>
+                    </div>
+                </div>
+
+                <div class="md:col-span-3">
+                    <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow">
+                        Änderungen speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Queue Modal Fenster -->
+    <div id="queue-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
+        <div id="queue-modal-content" class="modal-content bg-white w-full max-w-md p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold">Aktuelle Warteschlange</h2>
+                <button id="close-queue-modal-btn" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div id="queue-list-container" class="max-h-64 overflow-y-auto space-y-2 text-sm">
+                </div>
+        </div>
+    </div>
+
+    <div id="create-deck-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
+        <div class="modal-content bg-white w-full max-w-md p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0">
+            <h2 class="text-2xl font-semibold mb-4">Neues Deck erstellen</h2>
+            <form id="create-deck-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Name des Decks</label>
+                    <input type="text" name="deckName" required class="w-full p-2 border rounded focus:ring-blue-500" placeholder="z.B. Mathe 1">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Vorlage wählen</label>
+                    <select id="template-select" name="template" class="w-full p-2 border rounded bg-white">
+                        </select>
+                    <p id="template-desc" class="text-xs text-gray-500 mt-1"></p>
+                </div>
+                <div class="flex justify-end space-x-2 mt-6">
+                    <button type="button" id="cancel-create-deck" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Abbrechen</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
+
+

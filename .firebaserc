@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "chinesisch-app",
+    "prod": "omnicards-29e53"
+  },
+  "targets": {},
+  "etags": {}
+}
