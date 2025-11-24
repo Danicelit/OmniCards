@@ -99,14 +99,17 @@
                     </div>
                 </div>
 
-                <div class="scene w-full h-64 perspective-1000 my-6 cursor-pointer group" onclick="flipCard()"> <div id="card-inner" class="card-inner w-full h-full relative text-center transition-transform duration-600 transform-style-3d shadow-xl rounded-xl border border-gray-200 bg-white">
-                        <div class="card-front absolute w-full h-full backface-hidden flex items-center justify-center flex-col bg-white rounded-xl">
+                <div class="scene w-full h-64 perspective-1000 my-6 cursor-pointer group" onclick="flipCard()">
+                    <div id="card-inner" class="card-inner w-full h-full relative text-center transition-transform duration-600 transform-style-3d shadow-xl rounded-xl border border-gray-200 bg-white">
+                        
+                        <div class="card-front absolute w-full h-full flex items-center justify-center flex-col bg-white rounded-xl">
                             <div id="card-front-text" class="text-4xl font-bold text-gray-800 p-4">
                                 Lade...
                             </div>
                             <p class="text-xs text-gray-400 mt-4">(Klicken zum Umdrehen)</p>
                         </div>
-                        <div class="card-back absolute w-full h-full backface-hidden transform rotate-y-180 flex items-center justify-center flex-col bg-blue-50 rounded-xl border-2 border-blue-100">
+
+                        <div class="card-back absolute w-full h-full flex items-center justify-center flex-col bg-blue-50 rounded-xl border-2 border-blue-100">
                             <div id="card-back-content">
                                 </div>
                         </div>

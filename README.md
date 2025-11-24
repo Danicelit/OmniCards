@@ -13,7 +13,7 @@ OmniCards (formerly *chinesisch-app*) is a web application designed to help user
 Here is the current development plan, sorted by priority.
 
 ### 🚨 Phase 1: Stability & Critical Bugfixes
-- [ ] **Bugfix:** Empty card back during study session (rendering issue).
+- [x] **Bugfix:** Empty card back during study session (rendering issue).
 - [ ] **Bugfix:** Imported cards display "undefined" (data structure compatibility).
 - [ ] **Bugfix:** Remove duplicate "Add new card" UI element.
 - [ ] **Bugfix:** Header title ("OmniCards") does not reset when returning to the dashboard.
