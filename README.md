@@ -15,6 +15,7 @@ Here is the current development plan, sorted by priority.
 ### 🚨 Phase 1: Stability & Critical Bugfixes
 - [ ] **Bugfix:** Empty card back during study session (rendering issue).
 - [ ] **Bugfix:** Imported cards display "undefined" (data structure compatibility).
+- [ ] **Bugfix:** Card carrying over from different deck.
 - [ ] **Bugfix:** Remove duplicate "Add new card" UI element.
 - [ ] **Bugfix:** Header title ("OmniCards") does not reset when returning to the dashboard.
 - [ ] **Bugfix:** Card count in dashboard always shows "0".
@@ -46,7 +47,7 @@ OmniCards was born out of the need to learn specific content—particularly Chin
 The app relies on **Google Firebase** as a backend, enabling real-time synchronization across devices, secure user authentication, and a scalable database. The frontend is intentionally kept "lightweight" (Vanilla JS & Tailwind CSS) to ensure maximum performance and easy maintainability.
 
 ### The MVP (Minimum Viable Product)
-The current MVP is fully functional and includes the following definitions:
+The current MVP is almost fully functional and includes the following definitions:
 1.  **Multi-User Support:** Each user has their own protected data environment (Google Login).
 2.  **Template System:** Support for various card types:
     * *Standard:* Front/Back.
@@ -54,6 +55,7 @@ The current MVP is fully functional and includes the following definitions:
     * *Math:* Rendering of LaTeX formulas via KaTeX.
 3.  **Learning Algorithm:** A simple Spaced Repetition System that queries cards more or less frequently based on learning success (Levels 0-4).
 4.  **Community Sharing:** The ability to publish own decks and import decks from other users.
+When the most urgent bugs are fixed, the MVP is fully functional.
 
 ---
 
