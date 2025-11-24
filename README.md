@@ -2,7 +2,7 @@
 
 **A universal, web-based flashcard learning platform focusing on flexibility (Math, Languages) and community.**
 
-OmniCards (formerly *chinesisch-app*) is a web application designed to help users internalize learning content efficiently using a "Spaced Repetition System" (SRS). Unlike simple vocabulary trainers, OmniCards supports complex content through a flexible template system, including mathematical formulas (LaTeX) and language-specific features (e.g., Pinyin conversion).
+OmniCards is a web application designed to help users internalize learning content efficiently using a "Spaced Repetition System" (SRS). Unlike simple vocabulary trainers, OmniCards supports complex content through a flexible template system, including mathematical formulas (LaTeX) and language-specific features (e.g., Pinyin conversion).
 
 > **Note:** While the documentation and codebase are in English, the current User Interface (UI) of the application is primarily in German. Multi-language support for the UI is planned for Phase 3.
 
