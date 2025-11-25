@@ -131,9 +131,18 @@
             </div>
 
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 relative">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Lernen</h2>
-                    <div id="review-count-container" class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 text-sm font-medium px-3 py-1 rounded-full cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800 transition" title="Klicken, um Warteschlange zu sehen">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Lernen</h2>
+                        
+                        <select id="study-mode-select" class="py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 cursor-pointer shadow-sm">
+                            <option value="standard">Standard (A → B)</option>
+                            <option value="reverse">Umgekehrt (B → A)</option>
+                            <option value="random">Zufällig (Mix)</option>
+                        </select>
+                    </div>
+
+                    <div id="review-count-container" class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 text-sm font-medium px-3 py-1 rounded-full cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800 transition flex-shrink-0" title="Klicken, um Warteschlange zu sehen">
                         Warteschlange: <span id="review-count">0</span>
                     </div>
                 </div>

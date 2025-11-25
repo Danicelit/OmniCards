@@ -26,6 +26,8 @@ let currentUser = null; // Speichert das User-Objekt
 let currentDeckSort = 'lastLearned'; // Standard: Zuletzt gelernt
 let cachedDecks = [];
 
+let currentStudyMode = 'standard'; // 'standard', 'reverse', 'random'
+
 // --- DOM Elements ---
 const appContainer = document.getElementById('app-container');
 const firebaseErrorContainer = document.getElementById('firebase-error-container');
@@ -111,6 +113,7 @@ const queueListContainer = document.getElementById('queue-list-container');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const darkModeKnob = document.getElementById('dark-mode-knob');
 const languageSelect = document.getElementById('language-select');
+const studyModeSelect = document.getElementById('study-mode-select');
 
 
 // --- Initialization ---
@@ -269,6 +272,23 @@ document.addEventListener('DOMContentLoaded', () => {
         alert("Spracheinstellung gespeichert. Übersetzung folgt in Phase 3!");
         // später: updateTexts(lang);
     });
+
+    // 3. Lern-Modus laden
+    const savedMode = localStorage.getItem('omniCardsStudyMode');
+    if (savedMode) {
+        currentStudyMode = savedMode;
+        if (studyModeSelect) studyModeSelect.value = savedMode;
+    }
+
+    // Listener für Modus-Wechsel
+    if (studyModeSelect) {
+        studyModeSelect.addEventListener('change', (e) => {
+            currentStudyMode = e.target.value;
+            localStorage.setItem('omniCardsStudyMode', currentStudyMode);
+            // Optional: Wenn wir gerade lernen, nächste Karte sofort aktualisieren?
+            // Besser: Nichts tun, wirkt ab der nächsten Karte.
+        });
+    }
 });
 
 
@@ -478,12 +498,11 @@ function showNextCard() {
     
     // 1. Check Empty
     if (!reviewQueue || reviewQueue.length === 0) {
-        cardFrontText.innerHTML = '<span class="text-2xl text-gray-700">Gut gemacht!</span>';
+        cardFrontText.innerHTML = '<span class="text-2xl text-gray-700 dark:text-gray-200">Gut gemacht!</span>';
         cardBackContent.innerHTML = ''; 
         showButton.style.display = 'none';
         studyMessage.textContent = "Alle Karten für diese Runde gelernt.";
         currentCard = null;
-        
         buildReviewQueue(); 
         return;
     }
@@ -495,14 +514,47 @@ function showNextCard() {
         return;
     }
     
-    // 3. Template Render
+    // --- NEU: MODUS LOGIK ---
+    let useReverse = false;
+    
+    if (currentStudyMode === 'reverse') {
+        useReverse = true;
+    } else if (currentStudyMode === 'random') {
+        useReverse = Math.random() < 0.5; // 50% Chance
+    }
+
+    // Wir erstellen ein "Display Objekt", damit wir die Original-Karte nicht verändern
+    // (Wichtig, damit beim Speichern des SRS-Levels nichts kaputt geht)
+    const displayCard = { ...currentCard };
+
+    if (useReverse) {
+        // Wir tauschen Vorder- und Rückseite für die Anzeige
+        // WICHTIG: Wir nutzen die "getVal" Logik aus templates.js indirekt,
+        // indem wir hier die Hauptfelder vertauschen.
+        
+        // Hole die echten Werte (egal ob front/back oder german/chinese)
+        const realFront = displayCard.front || displayCard.german || '';
+        const realBack = displayCard.back || displayCard.chinese || '';
+
+        // Tauschen
+        displayCard.front = realBack;
+        displayCard.back = realFront;
+        
+        // Hinweis: 'pinyin' oder 'extra' bleibt, wo es ist.
+        // Das ist gut! Im Chinesisch-Modus wird also:
+        // Frage: Hanzi
+        // Antwort: Deutsch (+ Pinyin Info bleibt auf Rückseite sichtbar)
+    }
+    // ------------------------
+    
+    // 3. Template Render (nutze jetzt displayCard statt currentCard)
     const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
 
-    cardFrontText.innerHTML = template.renderFront(currentCard);
+    cardFrontText.innerHTML = template.renderFront(displayCard);
     renderMath(cardFrontText); 
     
     cardBackContent.innerHTML = '';
-    const newBackContent = template.renderBack(currentCard);
+    const newBackContent = template.renderBack(displayCard);
     
     // 4. Backside Delay
     setTimeout(() => {

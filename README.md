@@ -31,7 +31,7 @@ Here is the current development plan, sorted by priority.
 - [x] **Feature:** New settings menu (Modal).
 - [ ] **Feature:** UI Language selection (German/English).
 - [x] **Feature:** Dark Mode.
-- [ ] **Feature:** Customizable study modes (Front only, Back only, Random).
+- [x] **Feature:** Customizable study modes (Front only, Back only, Random).
 
 ### 🚀 Phase 4: Marketplace & Community
 - [ ] **Feature:** Deck preview before importing (Modal with sample cards).
