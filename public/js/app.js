@@ -128,6 +128,8 @@ const publicSearchInput = document.getElementById('public-search-input');
 const publicSortSelect = document.getElementById('public-sort-select');
 const publicFilterSelect = document.getElementById('public-filter-select');
 
+const cardTableHeaderRow = document.getElementById('card-table-header-row');
+
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -835,6 +837,8 @@ function showStudyView(deckId, deckTitle, deckType = 'standard') {
     
     buildFormFields(currentDeckType, dynamicFieldsContainer);
 
+    updateTableHeaders(currentDeckType);
+
     document.querySelector('h1').textContent = deckTitle;
     
     if (storageService.subscribeCards) {
@@ -1047,7 +1051,7 @@ function renderCardList() {
         
         const displayFront = card.front || card.german || '?';
         const displayBack = card.back || card.chinese || '?';
-        const displayExtra = card.extra || card.pinyin || '';
+        const displayExtra = card.extra || card.note || card.pinyin || '';
 
         tr.innerHTML = `
             <td class="px-2 py-3 text-sm text-gray-500">${index + 1}</td>
@@ -1401,4 +1405,37 @@ function updateSortIndicators() {
             th.classList.add('text-gray-500', 'dark:text-gray-300');
         }
     });
+}
+
+function updateTableHeaders(deckType) {
+    if (!cardTableHeaderRow) return;
+
+    const template = CardTemplates[deckType] || CardTemplates['standard'];
+    
+    // Standard Spalte: Index (#)
+    let html = `<th class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>`;
+
+    // Dynamische Spalten aus dem Template
+    // Wir mappen die Felder auf unsere internen Sortier-Keys (front, back, extra)
+    const sortKeys = ['front', 'back', 'extra'];
+    
+    template.fields.forEach((field, index) => {
+        const sortKey = sortKeys[index] || field.id; // Fallback falls mehr Felder
+        
+        html += `
+            <th data-sort="${sortKey}" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-white">
+                ${field.label} <span class="sort-indicator"></span>
+            </th>
+        `;
+    });
+
+    // Standard Spalten: Level & Aktionen
+    html += `
+        <th data-sort="level" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-white">
+            Level <span class="sort-indicator"></span>
+        </th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aktionen</th>
+    `;
+
+    cardTableHeaderRow.innerHTML = html;
 }

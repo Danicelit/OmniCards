@@ -7,9 +7,9 @@ export const CardTemplates = {
         fields: [
             { id: 'front', label: 'Front (Question)', placeholder: 'e.g., Dog', type: 'text' },
             { id: 'back', label: 'Back (Answer)', placeholder: 'e.g., Hund', type: 'text' },
-            { id: 'note', label: 'Note (Optional)', placeholder: 'Mnemonic...', type: 'text' } // 'note' wird in renderBack verwendet, ist ok. Wenn wir strikt sein wollen, mappen wir note -> extra. Aber note ist spezifisch für standard. Lassen wir es oder nutzen extra? Für Konsistenz: 'extra'.
-            // UPDATE: Lass uns 'note' im Standard Template auch zu 'extra' mappen, damit ALLES front/back/extra ist.
+            { id: 'extra', label: 'Note (Optional)', placeholder: 'Mnemonic...', type: 'text' }
         ],
+        // ... render funktionen bleiben gleich ...
         renderFront: (card) => `<div class="text-3xl font-bold dark:text-gray-100">${card.front}</div>`,
         renderBack: (card) => `
             <div class="text-3xl font-bold mb-4 dark:text-gray-100">${card.back}</div>
