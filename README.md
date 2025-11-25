@@ -23,7 +23,7 @@ Here is the current development plan, sorted by priority.
 
 ### 🛠 Phase 2: Deck Management & Core Features
 - [x] **Feature:** Delete decks (with security confirmation & sync to marketplace).
-- [ ] **Feature:** Rename decks.
+- [x] **Feature:** Rename decks.
 - [ ] **Feature:** Extended dashboard sorting (Last opened, Name, Card count).
 - [ ] **Feature:** Pin "Last opened deck" to the top.
 

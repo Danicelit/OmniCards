@@ -389,5 +389,13 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
 
             await _deletePublicDeckInternal(publicDeckId, user.uid);
         },
+        // 12. Deck Metadaten aktualisieren (z.B. Titel)
+        updateDeck: async (deckId, data) => {
+            const user = auth.currentUser;
+            if (!user || !deckId) throw new Error("Nicht eingeloggt");
+            
+            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
+            await setDoc(deckRef, data, { merge: true });
+        },
     };
 }

@@ -36,6 +36,7 @@ const createDeckBtn = document.getElementById('create-deck-btn'); // <--- HIER F
 const backToDashboardBtn = document.getElementById('back-to-dashboard-btn');
 const deckCountEl = document.getElementById('deck-count');
 const deleteDeckBtn = document.getElementById('delete-deck-btn');
+const renameDeckBtn = document.getElementById('rename-deck-btn');
 
 // Tabs
 const tabMyDecks = document.getElementById('tab-my-decks');
@@ -228,10 +229,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if(syncLocalToCloudBtn) syncLocalToCloudBtn.addEventListener('click', handleSyncLocalToCloud);
 
     if (deleteDeckBtn) deleteDeckBtn.addEventListener('click', handleDeleteDeck);
+
+    if (renameDeckBtn) renameDeckBtn.addEventListener('click', handleRenameDeck);
 });
 
 
 // --- Logic Functions ---
+
+async function handleRenameDeck() {
+    if (!currentDeckId) return;
+
+    // Aktuellen Titel aus der H1 lesen (Hack, aber effizient)
+    const oldTitle = document.querySelector('h1').textContent;
+
+    const newTitle = prompt("Neuer Name für das Deck:", oldTitle);
+
+    if (newTitle && newTitle.trim() !== "" && newTitle !== oldTitle) {
+        try {
+            await storageService.updateDeck(currentDeckId, { title: newTitle.trim() });
+
+            // UI sofort aktualisieren
+            document.querySelector('h1').textContent = newTitle.trim();
+            studyMessage.textContent = "Deck umbenannt.";
+
+            // Hinweis: Die Deck-Liste im Dashboard aktualisiert sich automatisch dank onSnapshot!
+        } catch (error) {
+            console.error(error);
+            alert("Fehler beim Umbenennen: " + error.message);
+        }
+    }
+}
 
 // Abstracted Data Update Function
 function handleDataUpdate(cards) {
