@@ -28,6 +28,8 @@ let cachedDecks = [];
 
 let currentStudyMode = 'standard'; // 'standard', 'reverse', 'random'
 
+let currentPreviewDeckId = null;
+
 // --- DOM Elements ---
 const appContainer = document.getElementById('app-container');
 const firebaseErrorContainer = document.getElementById('firebase-error-container');
@@ -114,6 +116,14 @@ const darkModeToggle = document.getElementById('dark-mode-toggle');
 const darkModeKnob = document.getElementById('dark-mode-knob');
 const languageSelect = document.getElementById('language-select');
 const studyModeSelect = document.getElementById('study-mode-select');
+
+const previewModal = document.getElementById('preview-deck-modal');
+const previewTitle = document.getElementById('preview-title');
+const previewMeta = document.getElementById('preview-meta');
+const previewCardsList = document.getElementById('preview-cards-list');
+const previewImportBtn = document.getElementById('preview-import-btn');
+const previewCancelBtn = document.getElementById('preview-cancel-btn');
+const closePreviewBtn = document.getElementById('close-preview-btn');
 
 
 // --- Initialization ---
@@ -289,6 +299,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Besser: Nichts tun, wirkt ab der nächsten Karte.
         });
     }
+
+    // Preview Modal Listeners
+    if(previewImportBtn) previewImportBtn.addEventListener('click', handlePreviewImport);
+    if(closePreviewBtn) closePreviewBtn.addEventListener('click', closePreviewModal);
+    if(previewCancelBtn) previewCancelBtn.addEventListener('click', closePreviewModal);
+    if(previewModal) previewModal.addEventListener('click', (e) => {
+        if (e.target === previewModal) closePreviewModal();
+    });
 });
 
 
@@ -864,62 +882,77 @@ function loadPublicDecks() {
                 
                 const isMyDeck = currentUser && deck.originalAuthorId === currentUser.uid;
 
-                let actionBtnHtml = '';
-                if (isMyDeck) {
-                    // FIX: Button Farben im Dark Mode (bg-red-900 text-red-100)
-                    actionBtnHtml = `
-                        <button class="delete-public-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
-                            🗑 Löschen
-                        </button>`;
-                } else {
-                    actionBtnHtml = `
-                        <button class="import-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
-                            ⬇ Importieren
-                        </button>`;
-                }
+            let actionBtnHtml = '';
+            
+            if (isMyDeck) {
+                // Fall 1: Mein Deck -> Nur Löschen
+                actionBtnHtml = `
+                    <button class="delete-public-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
+                        🗑 Löschen
+                    </button>`;
+            } else {
+                // Fall 2: Fremdes Deck -> Vorschau UND Importieren
+                // Wir nutzen ein Flex-Container für zwei Buttons nebeneinander
+                actionBtnHtml = `
+                    <div class="flex space-x-2">
+                        <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="Vorschau" data-id="${deck.id}">
+                            👁
+                        </button>
+                        <button class="import-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-1 rounded text-sm font-medium transition" title="Direkt Importieren" data-id="${deck.id}">
+                            ⬇ Import
+                        </button>
+                    </div>`;
+            }
 
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="font-bold text-xl text-gray-800 dark:text-gray-100">${deck.title}</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">von ${deck.originalAuthor} ${isMyDeck ? '(Du)' : ''}</p>
-                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} Karten</p>
-                        </div>
-                        ${actionBtnHtml}
+            div.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-xl text-gray-800 dark:text-gray-100">${deck.title}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">von ${deck.originalAuthor} ${isMyDeck ? '(Du)' : ''}</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} Karten</p>
                     </div>
-                `;
+                    ${actionBtnHtml}
+                </div>
+            `;
 
-                // Event Listener hinzufügen
-                if (isMyDeck) {
-                    div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        if (confirm(`Möchtest du dein öffentliches Deck "${deck.title}" wirklich löschen?`)) {
-                            try {
-                                await storageService.deletePublicDeck(deck.id);
-                                alert("Deck vom Marktplatz entfernt.");
-                            } catch (err) {
-                                console.error(err);
-                                alert("Fehler: " + err.message);
-                            }
+            // Event Listener hinzufügen
+            if (isMyDeck) {
+                div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Möchtest du dein öffentliches Deck "${deck.title}" wirklich löschen?`)) {
+                        try {
+                            await storageService.deletePublicDeck(deck.id);
+                            alert("Deck vom Marktplatz entfernt.");
+                        } catch (err) {
+                            console.error(err);
+                            alert("Fehler: " + err.message);
                         }
-                    });
-                } else {
-                    div.querySelector('.import-btn').addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        if (confirm(`"${deck.title}" importieren?`)) {
-                            try {
-                                await storageService.importDeck(deck.id);
-                                alert("Importiert!");
-                                switchTab('my-decks');
-                            } catch (err) {
-                                console.error(err);
-                                alert("Fehler beim Import.");
-                            }
+                    }
+                });
+            } else {
+                // Listener für VORSCHAU (Auge)
+                div.querySelector('.preview-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openPreviewModal(deck);
+                });
+
+                // Listener für IMPORT (Pfeil) - Wiederhergestellt!
+                div.querySelector('.import-btn').addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Möchtest du "${deck.title}" direkt importieren?`)) {
+                        try {
+                            await storageService.importDeck(deck.id);
+                            alert("Deck erfolgreich importiert!");
+                            switchTab('my-decks');
+                        } catch (err) {
+                            console.error(err);
+                            alert("Fehler beim Import: " + err.message);
                         }
-                    });
-                }
-                
-                publicDeckListContainer.appendChild(div);
+                    }
+                });
+            }
+            
+            publicDeckListContainer.appendChild(div);
             });
         });
     }
@@ -1085,6 +1118,93 @@ function updateDarkModeToggleUI(isDark) {
         // Hintergrund Grau
         darkModeToggle.classList.add('bg-gray-200');
         darkModeToggle.classList.remove('bg-blue-600');
+    }
+}
+
+// --- Preview Logic ---
+
+async function openPreviewModal(deck) {
+    currentPreviewDeckId = deck.id;
+    
+    // 1. UI Reset & Öffnen
+    previewTitle.textContent = deck.title;
+    previewMeta.textContent = `Erstellt von ${deck.originalAuthor} • ${deck.type} • ${deck.cardCount} Karten`;
+    previewCardsList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 italic">Lade Beispiele...</p>';
+    
+    previewModal.classList.remove('opacity-0', 'pointer-events-none');
+    previewModal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
+
+    // 2. Daten laden
+    try {
+        const sampleCards = await storageService.getPublicDeckPreview(deck.id);
+        renderPreviewCards(sampleCards, deck.type);
+    } catch (err) {
+        console.error(err);
+        previewCardsList.innerHTML = '<p class="text-red-500">Fehler beim Laden der Vorschau.</p>';
+    }
+}
+
+function renderPreviewCards(cards, deckType) {
+    previewCardsList.innerHTML = '';
+    
+    if (cards.length === 0) {
+        previewCardsList.innerHTML = '<p class="text-gray-500">Dieses Deck ist leer.</p>';
+        return;
+    }
+
+    const template = CardTemplates[deckType] || CardTemplates['standard'];
+
+    cards.forEach(card => {
+        const div = document.createElement('div');
+        div.className = "p-3 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex flex-col sm:flex-row gap-2 sm:items-center justify-between";
+        
+        // Wir nutzen einfache Text-Darstellung statt komplexem HTML-Render für die Liste
+        // Aber wir nutzen die Template-Felderlogik um die richtigen Daten zu greifen
+        // Da templates.js renderFront HTML zurückgibt, ist es sicherer, direkt auf die Daten zuzugreifen.
+        
+        // Einfacher Fallback für Preview:
+        const front = card.front || card.german || '?';
+        const back = card.back || card.chinese || '?';
+        
+        div.innerHTML = `
+            <div class="font-medium text-gray-800 dark:text-gray-200 truncate w-full sm:w-1/2">${front}</div>
+            <div class="text-gray-600 dark:text-gray-400 truncate w-full sm:w-1/2 sm:text-right">➔ ${back}</div>
+        `;
+        previewCardsList.appendChild(div);
+    });
+    
+    // Info, dass es nur ein Auszug ist
+    const info = document.createElement('p');
+    info.className = "text-xs text-center text-gray-400 mt-2";
+    info.textContent = "... und weitere Karten.";
+    previewCardsList.appendChild(info);
+}
+
+function closePreviewModal() {
+    previewModal.classList.add('opacity-0', 'pointer-events-none');
+    previewModal.querySelector('.modal-content').classList.add('scale-95', 'opacity-0');
+    currentPreviewDeckId = null;
+}
+
+async function handlePreviewImport() {
+    if (!currentPreviewDeckId) return;
+    
+    // Button Loading State
+    const originalText = previewImportBtn.textContent;
+    previewImportBtn.textContent = "Importiere...";
+    previewImportBtn.disabled = true;
+
+    try {
+        await storageService.importDeck(currentPreviewDeckId);
+        closePreviewModal();
+        alert("Deck erfolgreich importiert!");
+        switchTab('my-decks');
+    } catch (err) {
+        console.error(err);
+        alert("Fehler: " + err.message);
+    } finally {
+        previewImportBtn.textContent = originalText;
+        previewImportBtn.disabled = false;
     }
 }
 

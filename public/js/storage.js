@@ -17,7 +17,8 @@ import {
     getDocs,
     getDoc,
     increment,
-    where
+    where,
+    limit
 } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
 import { db, auth, appId } from './config.js';
@@ -396,6 +397,18 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             
             const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
             await setDoc(deckRef, data, { merge: true });
+        },
+        // 13. Vorschau-Karten laden (Public)
+        getPublicDeckPreview: async (publicDeckId) => {
+            // Wir brauchen hier keinen User-Check, da Public Decks "public" sind
+            const cardsRef = collection(db, `/artifacts/${appId}/public_decks/${publicDeckId}/cards`);
+            // Nur die ersten 5 Karten holen
+            const q = query(cardsRef, limit(5));
+            const snapshot = await getDocs(q);
+            
+            const cards = [];
+            snapshot.forEach(doc => cards.push(doc.data()));
+            return cards;
         },
     };
 }

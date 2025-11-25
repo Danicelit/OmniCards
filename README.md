@@ -34,7 +34,7 @@ Here is the current development plan, sorted by priority.
 - [x] **Feature:** Customizable study modes (Front only, Back only, Random).
 
 ### 🚀 Phase 4: Marketplace & Community
-- [ ] **Feature:** Deck preview before importing (Modal with sample cards).
+- [x] **Feature:** Deck preview before importing (Modal with sample cards).
 - [ ] **Feature:** Search and filter functionality in the marketplace.
 - [ ] **Feature:** Automatic deletion from marketplace when the private source deck is deleted.
 
