@@ -108,6 +108,10 @@ const queueModalContent = document.getElementById('queue-modal-content');
 const closeQueueModalBtn = document.getElementById('close-queue-modal-btn');
 const queueListContainer = document.getElementById('queue-list-container');
 
+const darkModeToggle = document.getElementById('dark-mode-toggle');
+const darkModeKnob = document.getElementById('dark-mode-knob');
+const languageSelect = document.getElementById('language-select');
+
 
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -252,6 +256,19 @@ document.addEventListener('DOMContentLoaded', () => {
             renderDeckList(cachedDecks); 
         });
     }
+    // 1. Theme laden (Ganz am Anfang!)
+    initTheme();
+
+    // 2. Listener für Settings
+    if (darkModeToggle) darkModeToggle.addEventListener('click', toggleDarkMode);
+
+    // (Sprache kommt später, aber Listener schon mal vorbereiten)
+    if (languageSelect) languageSelect.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        localStorage.setItem('omniCardsLanguage', lang);
+        alert("Spracheinstellung gespeichert. Übersetzung folgt in Phase 3!");
+        // später: updateTexts(lang);
+    });
 });
 
 
@@ -301,7 +318,8 @@ function buildFormFields(templateKey, containerElement) {
         wrapper.className = "flex flex-col";
 
         const label = document.createElement('label');
-        label.className = "block text-sm font-medium text-gray-700 mb-1";
+        // FIX: dark:text-gray-300
+        label.className = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
         label.textContent = field.label;
         wrapper.appendChild(label);
 
@@ -313,7 +331,8 @@ function buildFormFields(templateKey, containerElement) {
         input.name = field.id; 
         input.id = `input-${field.id}`;
         input.placeholder = field.placeholder || '';
-        input.className = "w-full p-2 border border-gray-300 focus:ring-blue-500 focus:border-blue-500 " + (field.hasAction ? "rounded-l-lg" : "rounded-lg");
+        // FIX: Dark Mode Klassen für Input
+        input.className = "w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 " + (field.hasAction ? "rounded-l-lg" : "rounded-lg");
 
         if (field.id === 'pinyin') {
              input.addEventListener('keyup', handlePinyinKeyup);
@@ -325,7 +344,8 @@ function buildFormFields(templateKey, containerElement) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.textContent = field.actionLabel;
-            btn.className = "px-3 py-2 bg-gray-200 text-gray-700 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-300 text-sm";
+            // FIX: Dark Mode Klassen für Button
+            btn.className = "px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-300 dark:hover:bg-gray-500 text-sm";
             btn.onclick = () => field.actionHandler(input);
             inputGroup.appendChild(btn);
         }
@@ -717,14 +737,14 @@ function renderDeckList(decks) {
 
     sortedDecks.forEach(deck => {
         const div = document.createElement('div');
-        div.className = "p-6 bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
+        div.className = "p-6 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
         
         div.innerHTML = `
-            <h3 class="font-bold text-xl mb-2">${deck.title}</h3>
-            <p class="text-sm text-gray-500">${deck.cardCount || 0} Karten</p>
-            <p class="text-xs text-gray-400 mt-2 uppercase tracking-wide">${deck.type}</p>
+            <h3 class="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">${deck.title}</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">${deck.cardCount || 0} Karten</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type}</p>
             
-            <button class="share-btn absolute top-4 right-4 text-gray-400 hover:text-blue-600 p-2 opacity-0 group-hover:opacity-100 transition" title="Veröffentlichen">
+            <button class="share-btn absolute top-4 right-4 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 p-2 opacity-0 group-hover:opacity-100 transition" title="Veröffentlichen">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
@@ -787,21 +807,21 @@ function loadPublicDecks() {
             }
             decks.forEach(deck => {
                 const div = document.createElement('div');
-                div.className = "p-6 bg-white rounded-lg shadow border border-gray-200";
+                // FIX: dark:bg-gray-800 dark:border-gray-700
+                div.className = "p-6 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700";
                 
-                // Prüfen: Gehört das Deck mir?
                 const isMyDeck = currentUser && deck.originalAuthorId === currentUser.uid;
 
-                // Button HTML: Entweder Löschen (Rot) oder Importieren (Grün)
                 let actionBtnHtml = '';
                 if (isMyDeck) {
+                    // FIX: Button Farben im Dark Mode (bg-red-900 text-red-100)
                     actionBtnHtml = `
-                        <button class="delete-public-btn bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
+                        <button class="delete-public-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
                             🗑 Löschen
                         </button>`;
                 } else {
                     actionBtnHtml = `
-                        <button class="import-btn bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
+                        <button class="import-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
                             ⬇ Importieren
                         </button>`;
                 }
@@ -809,9 +829,9 @@ function loadPublicDecks() {
                 div.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
-                            <h3 class="font-bold text-xl text-gray-800">${deck.title}</h3>
-                            <p class="text-sm text-gray-500 mt-1">von ${deck.originalAuthor} ${isMyDeck ? '(Du)' : ''}</p>
-                            <p class="text-xs text-gray-400 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} Karten</p>
+                            <h3 class="font-bold text-xl text-gray-800 dark:text-gray-100">${deck.title}</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">von ${deck.originalAuthor} ${isMyDeck ? '(Du)' : ''}</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} Karten</p>
                         </div>
                         ${actionBtnHtml}
                     </div>
@@ -955,12 +975,12 @@ function handleSortClick(e) {
 
 function buildAndShowQueueModal() {
     if (!reviewQueue || reviewQueue.length === 0) {
-        queueListContainer.innerHTML = '<p class="text-gray-500">Warteschlange leer.</p>';
+        queueListContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Warteschlange leer.</p>';
     } else {
         queueListContainer.innerHTML = reviewQueue.map((card, index) => `
-            <div class="p-2 border-b flex justify-between">
-                <span>${index + 1}. ${card.front || card.german}</span>
-                <span class="text-xs bg-gray-100 px-2 rounded">Lvl: ${card.srsLevel}</span>
+            <div class="p-2 border-b dark:border-gray-700 flex justify-between">
+                <span class="text-gray-800 dark:text-gray-200">${index + 1}. ${card.front || card.german}</span>
+                <span class="text-xs bg-gray-100 dark:bg-gray-700 dark:text-gray-300 px-2 rounded">Lvl: ${card.srsLevel}</span>
             </div>
         `).join('');
     }
@@ -974,6 +994,46 @@ function handleRebuildQueue() {
     setTimeout(() => {
         studyMessage.textContent = reviewQueue.length > 0 ? "Bereit!" : "Keine Karten.";
     }, 300);
+}
+
+function initTheme() {
+    // Prüfen ob gespeichert oder System-Einstellung
+    const savedTheme = localStorage.getItem('omniCardsTheme');
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+        document.documentElement.classList.add('dark');
+        updateDarkModeToggleUI(true);
+    } else {
+        document.documentElement.classList.remove('dark');
+        updateDarkModeToggleUI(false);
+    }
+}
+
+function toggleDarkMode() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('omniCardsTheme', isDark ? 'dark' : 'light');
+    updateDarkModeToggleUI(isDark);
+}
+
+function updateDarkModeToggleUI(isDark) {
+    if (!darkModeToggle || !darkModeKnob) return;
+    // Einfache UI Logik für den Toggle
+    if (isDark) {
+        // Knob nach rechts
+        darkModeKnob.classList.add('translate-x-6');
+        darkModeKnob.classList.remove('translate-x-1');
+        // Hintergrund Blau
+        darkModeToggle.classList.add('bg-blue-600');
+        darkModeToggle.classList.remove('bg-gray-200');
+    } else {
+        // Knob nach links
+        darkModeKnob.classList.add('translate-x-1');
+        darkModeKnob.classList.remove('translate-x-6');
+        // Hintergrund Grau
+        darkModeToggle.classList.add('bg-gray-200');
+        darkModeToggle.classList.remove('bg-blue-600');
+    }
 }
 
 // --- Modal Helpers ---

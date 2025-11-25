@@ -28,9 +28,9 @@ Here is the current development plan, sorted by priority.
 - [ ] **Feature:** Pin "Last opened deck" to the top.
 
 ### ⚙️ Phase 3: Settings & Personalization
-- [ ] **Feature:** New settings menu (Modal).
+- [x] **Feature:** New settings menu (Modal).
 - [ ] **Feature:** UI Language selection (German/English).
-- [ ] **Feature:** Dark Mode.
+- [x] **Feature:** Dark Mode.
 - [ ] **Feature:** Customizable study modes (Front only, Back only, Random).
 
 ### 🚀 Phase 4: Marketplace & Community

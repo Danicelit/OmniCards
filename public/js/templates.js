@@ -1,8 +1,7 @@
 import { convertPinyinTones } from './utils.js';
 
-// Helfer: Holt Daten sicher, egal ob alte (german/chinese) oder neue (front/back) Struktur
+// Helfer: Holt Daten sicher
 const getVal = (card, field, fallback) => {
-    // Prüfen ob Wert existiert und nicht leer ist
     if (card[field] !== undefined && card[field] !== null && card[field] !== '') return card[field];
     if (card[fallback] !== undefined && card[fallback] !== null && card[fallback] !== '') return card[fallback];
     return ''; 
@@ -17,10 +16,11 @@ export const CardTemplates = {
             { id: 'back', label: 'Back (Answer)', placeholder: 'e.g., Hund', type: 'text' },
             { id: 'note', label: 'Note (Optional)', placeholder: 'Mnemonic...', type: 'text' }
         ],
-        renderFront: (card) => `<div class="text-3xl font-bold">${getVal(card, 'front', 'german')}</div>`,
+        // FIX: dark:text-gray-100 für Lesbarkeit
+        renderFront: (card) => `<div class="text-3xl font-bold dark:text-gray-100">${getVal(card, 'front', 'german')}</div>`,
         renderBack: (card) => `
-            <div class="text-3xl font-bold mb-4">${getVal(card, 'back', 'chinese')}</div>
-            ${card.note ? `<div class="text-gray-500 italic text-lg">${card.note}</div>` : ''}
+            <div class="text-3xl font-bold mb-4 dark:text-gray-100">${getVal(card, 'back', 'chinese')}</div>
+            ${card.note ? `<div class="text-gray-500 dark:text-gray-400 italic text-lg">${card.note}</div>` : ''}
         `
     },
     
@@ -42,12 +42,12 @@ export const CardTemplates = {
                 }
             }
         ],
-        renderFront: (card) => `<div class="text-3xl font-bold">${getVal(card, 'front', 'german')}</div>`,
+        renderFront: (card) => `<div class="text-3xl font-bold dark:text-gray-100">${getVal(card, 'front', 'german')}</div>`,
         renderBack: (card) => {
             const pinyin = getVal(card, 'pinyin', 'extra');
             return `
-            <div class="text-5xl font-bold mb-2 font-serif">${getVal(card, 'back', 'chinese')}</div>
-            <div class="text-2xl text-blue-600 mb-4">${pinyin}</div>
+            <div class="text-5xl font-bold mb-2 font-serif dark:text-gray-100">${getVal(card, 'back', 'chinese')}</div>
+            <div class="text-2xl text-blue-600 dark:text-blue-400 mb-4">${pinyin}</div>
             `;
         }
     },
@@ -60,10 +60,10 @@ export const CardTemplates = {
             { id: 'back', label: 'Solution / Formula', placeholder: 'e.g., $$ 2x $$', type: 'text' },
             { id: 'hint', label: 'Hint (Optional)', placeholder: 'Rule...', type: 'text' }
         ],
-        renderFront: (card) => `<div class="text-2xl">${getVal(card, 'front', 'german')}</div>`,
+        renderFront: (card) => `<div class="text-2xl dark:text-gray-100">${getVal(card, 'front', 'german')}</div>`,
         renderBack: (card) => `
-            <div class="text-2xl mb-4 text-blue-700">${getVal(card, 'back', 'chinese')}</div>
-            ${card.hint ? `<div class="text-sm text-gray-500 border-t pt-2 mt-2">Hint: ${card.hint}</div>` : ''}
+            <div class="text-2xl mb-4 text-blue-700 dark:text-blue-400">${getVal(card, 'back', 'chinese')}</div>
+            ${card.hint ? `<div class="text-sm text-gray-500 dark:text-gray-400 border-t dark:border-gray-600 pt-2 mt-2">Hint: ${card.hint}</div>` : ''}
         `
     }
 };
