@@ -22,7 +22,7 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [x] **Logic:** Change the table attributes in each deck accordingly, fix standard info column bug
 
 ### 🎨 Phase 2: UI/UX Polish (No more System Alerts)
-- [ ] **Refactor:** Replace native browser `confirm()` and `alert()` with custom, styled Modals (for deletion, publishing, etc.).
+- [x] **Refactor:** Replace native browser `confirm()` and `alert()` with custom, styled Modals (for deletion, publishing, etc.).
 - [ ] **UX:** Improve "Empty Deck" state:
     - Change text from "Good job!" to "Add cards to start".
     - Hide "All cards learned" message when deck is actually empty.

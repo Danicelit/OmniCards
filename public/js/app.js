@@ -32,6 +32,8 @@ let currentPreviewDeckId = null;
 
 let allPublicDecks = []; // Cache für alle geladenen Public Decks
 
+let dialogResolve = null; // Function to call when user clicks a button
+
 // --- DOM Elements ---
 const appContainer = document.getElementById('app-container');
 const firebaseErrorContainer = document.getElementById('firebase-error-container');
@@ -129,6 +131,14 @@ const publicSortSelect = document.getElementById('public-sort-select');
 const publicFilterSelect = document.getElementById('public-filter-select');
 
 const cardTableHeaderRow = document.getElementById('card-table-header-row');
+
+const dialogModal = document.getElementById('global-dialog-modal');
+const dialogTitle = document.getElementById('dialog-title');
+const dialogMessage = document.getElementById('dialog-message');
+const dialogInputContainer = document.getElementById('dialog-input-container');
+const dialogInput = document.getElementById('dialog-input');
+const dialogConfirmBtn = document.getElementById('dialog-confirm-btn');
+const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
 
 
 // --- Initialization ---
@@ -336,24 +346,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function handleRenameDeck() {
     if (!currentDeckId) return;
-
-    // Aktuellen Titel aus der H1 lesen (Hack, aber effizient)
     const oldTitle = document.querySelector('h1').textContent;
-
-    const newTitle = prompt("Neuer Name für das Deck:", oldTitle);
-
+    
+    const newTitle = await uiShowPrompt("Deck umbenennen", "Neuer Name für das Deck:", oldTitle);
+    
     if (newTitle && newTitle.trim() !== "" && newTitle !== oldTitle) {
         try {
             await storageService.updateDeck(currentDeckId, { title: newTitle.trim() });
-
-            // UI sofort aktualisieren
             document.querySelector('h1').textContent = newTitle.trim();
-            studyMessage.textContent = "Deck umbenannt.";
-
-            // Hinweis: Die Deck-Liste im Dashboard aktualisiert sich automatisch dank onSnapshot!
+            // await uiShowAlert("Erfolg", "Deck umbenannt."); // Optional, vllt zu nervig
         } catch (error) {
             console.error(error);
-            alert("Fehler beim Umbenennen: " + error.message);
+            await uiShowAlert("Fehler", error.message);
         }
     }
 }
@@ -498,20 +502,21 @@ function resetStudyState() {
 async function handleDeleteDeck() {
     if (!currentDeckId) return;
 
-    // Sicherheitsabfrage
-    const confirmDelete = confirm("Bist du sicher, dass du dieses Deck und ALLE seine Karten unwiderruflich löschen möchtest?");
-    if (!confirmDelete) return;
-
-    // Zweite Sicherheitsabfrage (weil Löschen endgültig ist)
-    // const reallySure = confirm("Wirklich? Es gibt kein Zurück!"); // Optional, wenn du willst
+    const confirmed = await uiShowConfirm(
+        "Deck löschen?", 
+        "Möchtest du dieses Deck und ALLE Karten unwiderruflich löschen?", 
+        true // isDangerous -> Roter Button
+    );
+    
+    if (!confirmed) return;
 
     try {
         await storageService.deleteDeckFull(currentDeckId);
-        alert("Deck erfolgreich gelöscht.");
-        showDashboard(); // Zurück zur Übersicht
+        await uiShowAlert("Gelöscht", "Deck erfolgreich gelöscht."); // ERSETZT: alert
+        showDashboard();
     } catch (error) {
         console.error(error);
-        alert("Fehler beim Löschen: " + error.message);
+        await uiShowAlert("Fehler", error.message);
     }
 }
 
@@ -545,6 +550,10 @@ async function handleCreateDeckSubmit(e) {
     
     const formData = new FormData(createDeckForm);
     const title = formData.get('deckName');
+    if (!title) {
+        await uiShowAlert("Fehler", "Bitte einen Namen eingeben.");
+        return;
+    }
     const type = formData.get('template');
 
     if (!title) return;
@@ -897,13 +906,18 @@ function renderDeckList(decks) {
         const shareBtn = div.querySelector('.share-btn');
         shareBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (confirm(`Deck "${deck.title}" veröffentlichen?`)) {
+            const confirmed = await uiShowConfirm(
+                "Veröffentlichen", 
+                `Möchtest du "${deck.title}" für alle Nutzer im Marktplatz sichtbar machen?`
+            );
+
+            if (confirmed) {
                 try {
                     await storageService.publishDeckFull(deck.id, deck);
-                    alert("Veröffentlicht!");
+                    await uiShowAlert("Erfolg", "Deck veröffentlicht!");
                 } catch (err) {
                     console.error(err);
-                    alert("Fehler: " + err.message);
+                    await uiShowAlert("Fehler", err.message);
                 }
             }
         });
@@ -1234,11 +1248,11 @@ async function handlePreviewImport() {
     try {
         await storageService.importDeck(currentPreviewDeckId);
         closePreviewModal();
-        alert("Deck erfolgreich importiert!");
+        await uiShowAlert("Erfolg", "Deck erfolgreich importiert!"); // Hier ist Feedback gut
         switchTab('my-decks');
     } catch (err) {
         console.error(err);
-        alert("Fehler: " + err.message);
+        await uiShowAlert("Fehler", err.message);
     } finally {
         previewImportBtn.textContent = originalText;
         previewImportBtn.disabled = false;
@@ -1346,15 +1360,19 @@ function renderPublicDeckList() {
         if (isMyDeck) {
             div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (confirm(`Möchtest du dein öffentliches Deck "${deck.title}" wirklich löschen?`)) {
-                    try {
-                        await storageService.deletePublicDeck(deck.id);
-                        alert("Deck vom Marktplatz entfernt.");
-                        // Hinweis: onSnapshot aktualisiert die Liste automatisch, aber wir müssen sicherstellen, 
-                        // dass sie nicht leer bleibt, falls das gelöschte Deck das einzige war.
-                    } catch (err) {
+                const confirmed = await uiShowConfirm(
+                "Löschen", 
+                `Möchtest du dein öffentliches Deck "${deck.title}" wirklich löschen?`,
+                true // Dangerous
+            );
+            
+            if (confirmed) {
+                try {
+                    await storageService.deletePublicDeck(deck.id);
+                    await uiShowAlert("Gelöscht", "Deck vom Marktplatz entfernt.");
+                } catch (err) {
                         console.error(err);
-                        alert("Fehler: " + err.message);
+                        await uiShowAlert("Fehler", err.message);
                     }
                 }
             });
@@ -1365,14 +1383,19 @@ function renderPublicDeckList() {
             });
             div.querySelector('.import-btn').addEventListener('click', async (e) => {
                 e.stopPropagation();
-                if (confirm(`Möchtest du "${deck.title}" direkt importieren?`)) {
-                    try {
-                        await storageService.importDeck(deck.id);
-                        alert("Deck erfolgreich importiert!");
-                        switchTab('my-decks');
-                    } catch (err) {
+                const confirmed = await uiShowConfirm(
+                "Importieren", 
+                `Möchtest du "${deck.title}" in deine Sammlung importieren?`
+            );
+
+            if (confirmed) {
+                try {
+                    await storageService.importDeck(deck.id);
+                    // await uiShowAlert("Erfolg", "Deck importiert!"); // Kann man auch weglassen für Flow
+                    switchTab('my-decks');
+                } catch (err) {
                         console.error(err);
-                        alert("Fehler beim Import: " + err.message);
+                        await uiShowAlert("Fehler", err.message);
                     }
                 }
             });
@@ -1438,4 +1461,81 @@ function updateTableHeaders(deckType) {
     `;
 
     cardTableHeaderRow.innerHTML = html;
+}
+
+// --- Custom Dialog System (Alert/Confirm/Prompt Replacement) ---
+function openDialog(title, message, type = 'alert', placeholder = '') {
+    return new Promise((resolve) => {
+        dialogResolve = resolve;
+
+        // 1. Content setzen
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+        dialogInput.value = '';
+
+        // 2. UI anpassen je nach Typ
+        dialogInputContainer.classList.add('hidden');
+        dialogCancelBtn.classList.remove('hidden');
+        dialogConfirmBtn.className = "px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow-sm font-medium"; // Reset styles
+        dialogConfirmBtn.textContent = "OK";
+
+        if (type === 'alert') {
+            dialogCancelBtn.classList.add('hidden'); // Alert hat kein Cancel
+        } else if (type === 'confirm-danger') {
+            dialogConfirmBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            dialogConfirmBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+            dialogConfirmBtn.textContent = "Löschen";
+        } else if (type === 'prompt') {
+            dialogInputContainer.classList.remove('hidden');
+            dialogInput.placeholder = placeholder;
+            dialogConfirmBtn.textContent = "Speichern";
+        }
+
+        // 3. Anzeigen
+        dialogModal.classList.remove('opacity-0', 'pointer-events-none');
+        dialogModal.querySelector('.modal-content').classList.remove('scale-95');
+        
+        if (type === 'prompt') setTimeout(() => dialogInput.focus(), 100);
+    });
+}
+
+function closeDialog(result) {
+    dialogModal.classList.add('opacity-0', 'pointer-events-none');
+    dialogModal.querySelector('.modal-content').classList.add('scale-95');
+    
+    if (dialogResolve) {
+        dialogResolve(result);
+        dialogResolve = null;
+    }
+}
+
+// Event Listeners für Dialog (Einmalig registrieren!)
+if(dialogConfirmBtn) {
+    dialogConfirmBtn.addEventListener('click', () => {
+        // Bei Prompt den Text zurückgeben, sonst true
+        const value = (!dialogInputContainer.classList.contains('hidden')) ? dialogInput.value : true;
+        closeDialog(value);
+    });
+}
+if(dialogCancelBtn) {
+    dialogCancelBtn.addEventListener('click', () => closeDialog(false)); // Cancel = false
+}
+// Enter im Input bestätigt auch
+if(dialogInput) {
+    dialogInput.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') dialogConfirmBtn.click();
+    });
+}
+
+// Wrapper Functions for easier usage
+async function uiShowAlert(title, message) {
+    await openDialog(title, message, 'alert');
+}
+
+async function uiShowConfirm(title, message, isDangerous = false) {
+    return await openDialog(title, message, isDangerous ? 'confirm-danger' : 'confirm');
+}
+
+async function uiShowPrompt(title, message, placeholder = '') {
+    return await openDialog(title, message, 'prompt', placeholder);
 }
