@@ -368,32 +368,37 @@ function handleDataUpdate(cards) {
     renderCardList();
     if(deckCountEl) deckCountEl.textContent = allCards.length;
 
-    // 1. Warteschlange bereinigen: Entferne Karten, die nicht mehr in allCards existieren (weil gelöscht)
+    // 1. Warteschlange bereinigen & AKTUALISIEREN
     if (reviewQueue.length > 0) {
-        reviewQueue = reviewQueue.filter(qCard => allCards.find(c => c.id === qCard.id));
+        // Wir filtern nicht nur gelöschte, sondern wir holen uns auch die NEUEN DATEN
+        // für die Karten, die noch in der Queue sind.
+        reviewQueue = reviewQueue
+            .map(qCard => allCards.find(c => c.id === qCard.id)) // Neue Daten holen
+            .filter(c => c !== undefined); // Gelöschte entfernen
     }
 
-    // 2. Prüfen: Wurde die AKTUELLE Karte gelöscht?
+    // 2. Prüfen: Wurde die AKTUELLE Karte gelöscht oder geändert?
     if (currentCard) {
-        const stillExists = allCards.find(c => c.id === currentCard.id);
+        const updatedCard = allCards.find(c => c.id === currentCard.id);
         
-        if (!stillExists) {
-            // Karte wurde unter dem Hintern weggelöscht -> Sofort weiter
+        if (!updatedCard) {
+            // Karte wurde gelöscht -> Weiter
             console.log("Aktuelle Karte wurde gelöscht, springe weiter...");
             showNextCard();
         } else {
-            // Karte existiert noch -> Update die Daten im Speicher (falls Edit passiert ist)
-            currentCard = stillExists;
-            // Optional: Man könnte hier re-rendern, falls sich der Text geändert hat.
-            // Das sparen wir uns aber, damit die Karte sich nicht unerwartet umdreht.
+            // WICHTIG: Wir aktualisieren currentCard mit den neuen Werten aus der DB!
+            // Sonst arbeiten wir weiter mit alten Werten (z.B. altem SRS Level).
+            currentCard = updatedCard;
         }
     }
 
     // 3. Starten (Initial oder wenn Queue leer lief durch Löschen)
-    if (!currentCard) {
-        if (reviewQueue.length === 0 && allCards.length > 0) {
-            buildReviewQueue(); // Neu mischen, falls leer
-        }
+    if (!currentCard && reviewQueue.length === 0 && allCards.length > 0) {
+        // Wenn wir nichts tun, und Queue leer ist, starten wir neu
+        buildReviewQueue(); 
+        showNextCard();
+    } else if (!currentCard && reviewQueue.length > 0) {
+        // Falls wir currentCard verloren haben aber Queue noch da ist
         showNextCard();
     }
 }
@@ -753,26 +758,42 @@ async function handleUpdateCard(e) {
 async function handleFeedback(wasCorrect) {
     if (!currentCard || !currentDeckId) return;
 
-    let { id, srsLevel, consecutiveCorrect } = currentCard;
-    
+    // 1. Werte sicher auslesen (mit Fallback auf 0, falls undefined/null)
+    // Das verhindert den "NaN" Fehler bei alten Karten.
+    let srsLevel = (typeof currentCard.srsLevel === 'number') ? currentCard.srsLevel : 0;
+    let consecutiveCorrect = (typeof currentCard.consecutiveCorrect === 'number') ? currentCard.consecutiveCorrect : 0;
+
+    // 2. Neue Werte berechnen
     if (wasCorrect) {
         consecutiveCorrect++;
+        
+        // Logik: Alle 3 richtigen Antworten in Folge steigt man ein Level auf
         if (consecutiveCorrect >= 3 && srsLevel < 4) {
             srsLevel++;
-            consecutiveCorrect = 0; 
+            consecutiveCorrect = 0; // Streak Reset beim Aufstieg
         }
     } else {
+        // Bei Fehler: Streak weg und Level absteigen
         consecutiveCorrect = 0;
-        if (srsLevel > 0) srsLevel--;
+        if (srsLevel > 0) {
+            srsLevel--;
+        }
     }
 
+    // 3. Speichern
     try {
-        await storageService.updateCard(currentDeckId, id, { srsLevel, consecutiveCorrect });
+        await storageService.updateCard(currentDeckId, currentCard.id, { 
+            srsLevel: srsLevel, 
+            consecutiveCorrect: consecutiveCorrect 
+        });
     } catch (error) {
-        console.error(error);
+        console.error("Fehler beim Speichern des Fortschritts:", error);
     }
 
-    if (reviewQueue.length === 0) buildReviewQueue();
+    // 4. Weiter zur nächsten Karte (wenn Queue leer, neu mischen)
+    if (reviewQueue.length === 0) {
+        buildReviewQueue();
+    }
     showNextCard();
 }
 
@@ -1085,7 +1106,10 @@ function renderCardList() {
             <td class="px-4 py-3 text-sm font-medium text-gray-900">${displayFront}</td>
             <td class="px-4 py-3 text-sm text-gray-700">${displayBack}</td>
             <td class="px-4 py-3 text-sm text-gray-600">${displayExtra}</td>
-            <td class="px-4 py-3 text-sm text-gray-600">${card.srsLevel}</td>
+            <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                <span class="font-bold">${card.srsLevel}</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500 ml-1">(Streak: ${card.consecutiveCorrect || 0})</span>
+            </td>
             <td class="px-4 py-3 text-sm">
                 <button data-id="${card.id}" class="edit-btn text-blue-600 hover:text-blue-800 font-medium mr-3">Edit</button>
                 <button data-id="${card.id}" class="delete-btn text-red-600 hover:text-red-800 font-medium">Löschen</button>
