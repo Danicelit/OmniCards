@@ -19,11 +19,12 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [x] **Bugfix:** Deleting the currently active card causes "undefined" ghost card in the study session.
 - [x] **Logic:** Trigger immediate queue rebuild/card refresh when changing "Study Mode" (Front/Back/Random).
 - [x] **Logic:** Make the "Edit Card" modal dynamic (currently hardcoded to Chinese fields, breaks for Math decks).
-- [x] **Logic:** Change the table attributes in each deck accordingly, fix standard info column bug
+- [x] **Logic:** Change the table attributes in each deck accordingly, fix standard info column bug.
+- [ ] **Logic:** Level is not correctly incrementing or decrementing, card should not be button.
 
 ### 🎨 Phase 2: UI/UX Polish (No more System Alerts)
 - [x] **Refactor:** Replace native browser `confirm()` and `alert()` with custom, styled Modals (for deletion, publishing, etc.).
-- [ ] **UX:** Improve "Empty Deck" state:
+- [x] **UX:** Improve "Empty Deck" state:
     - Change text from "Good job!" to "Add cards to start".
     - Hide "All cards learned" message when deck is actually empty.
 - [ ] **UX:** Improve feedback messages (Toast notifications instead of text labels).

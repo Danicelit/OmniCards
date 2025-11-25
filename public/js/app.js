@@ -570,58 +570,72 @@ async function handleCreateDeckSubmit(e) {
 function showNextCard() {
     resetCardState(); 
     
-    // 1. Check Empty
+    // FALL 1: Das Deck ist komplett leer (noch keine Karten erstellt)
+    if (!allCards || allCards.length === 0) {
+        // Hübscher Platzhalter mit Icon
+        cardFrontText.innerHTML = `
+            <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span class="text-lg font-medium text-center">Füge Karteikarten hinzu,<br>um loszulegen.</span>
+            </div>
+        `;
+        cardBackContent.innerHTML = ''; 
+        
+        // UI Elemente verstecken
+        showButton.style.display = 'none';
+        studyMessage.textContent = ""; // WICHTIG: Keine "Gelernt"-Nachricht anzeigen
+        
+        currentCard = null;
+        return;
+    }
+
+    // FALL 2: Deck hat Karten, aber die aktuelle Lern-Runde ist vorbei (Queue leer)
     if (!reviewQueue || reviewQueue.length === 0) {
-        cardFrontText.innerHTML = '<span class="text-2xl text-gray-700 dark:text-gray-200">Gut gemacht!</span>';
+        cardFrontText.innerHTML = `
+            <div class="flex flex-col items-center justify-center text-green-600 dark:text-green-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-2xl font-bold">Gut gemacht!</span>
+            </div>
+        `;
         cardBackContent.innerHTML = ''; 
         showButton.style.display = 'none';
         studyMessage.textContent = "Alle Karten für diese Runde gelernt.";
         currentCard = null;
+        
+        // Versuch, neue Karten nachzuladen (für die nächste Runde)
         buildReviewQueue(); 
         return;
     }
 
-    // 2. Get Card
+    // FALL 3: Normale Karte anzeigen
     currentCard = reviewQueue.shift(); 
     if (!currentCard) { 
         showNextCard(); 
         return;
     }
     
-    // --- NEU: MODUS LOGIK ---
+    // --- Modus Logik (Bleibt wie vorher) ---
     let useReverse = false;
-    
     if (currentStudyMode === 'reverse') {
         useReverse = true;
     } else if (currentStudyMode === 'random') {
-        useReverse = Math.random() < 0.5; // 50% Chance
+        useReverse = Math.random() < 0.5; 
     }
 
-    // Wir erstellen ein "Display Objekt", damit wir die Original-Karte nicht verändern
-    // (Wichtig, damit beim Speichern des SRS-Levels nichts kaputt geht)
     const displayCard = { ...currentCard };
 
     if (useReverse) {
-        // Wir tauschen Vorder- und Rückseite für die Anzeige
-        // WICHTIG: Wir nutzen die "getVal" Logik aus templates.js indirekt,
-        // indem wir hier die Hauptfelder vertauschen.
-        
-        // Hole die echten Werte
-        const realFront = displayCard.front || '';
-        const realBack = displayCard.back || '';
-
-        // Tauschen
+        const realFront = displayCard.front || displayCard.german || '';
+        const realBack = displayCard.back || displayCard.chinese || '';
         displayCard.front = realBack;
         displayCard.back = realFront;
-        
-        // Hinweis: 'pinyin' oder 'extra' bleibt, wo es ist.
-        // Das ist gut! Im Chinesisch-Modus wird also:
-        // Frage: Hanzi
-        // Antwort: Deutsch (+ Pinyin Info bleibt auf Rückseite sichtbar)
     }
-    // ------------------------
     
-    // 3. Template Render (nutze jetzt displayCard statt currentCard)
+    // Template Render
     const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
 
     cardFrontText.innerHTML = template.renderFront(displayCard);
@@ -630,7 +644,6 @@ function showNextCard() {
     cardBackContent.innerHTML = '';
     const newBackContent = template.renderBack(displayCard);
     
-    // 4. Backside Delay
     setTimeout(() => {
         cardBackContent.innerHTML = newBackContent;
         renderMath(cardBackContent); 
