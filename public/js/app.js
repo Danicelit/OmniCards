@@ -301,8 +301,15 @@ document.addEventListener('DOMContentLoaded', () => {
         studyModeSelect.addEventListener('change', (e) => {
             currentStudyMode = e.target.value;
             localStorage.setItem('omniCardsStudyMode', currentStudyMode);
-            // Optional: Wenn wir gerade lernen, nächste Karte sofort aktualisieren?
-            // Besser: Nichts tun, wirkt ab der nächsten Karte.
+            
+            // NEU: Sofort anwenden!
+            // 1. Wenn wir uns in einem Deck befinden...
+            if (currentDeckId) {
+                // 2. ...Mischen wir den Stapel neu (damit die Sortierung/Zufall greift)
+                buildReviewQueue();
+                // 3. ...Und zeigen sofort eine neue Karte im neuen Modus an
+                showNextCard();
+            }
         });
     }
 
