@@ -1,4 +1,4 @@
-import { createLocalStorageService, createFirebaseService } from './storage.js';
+import { createFirebaseService } from './storage.js';
 import { convertPinyinTones } from './utils.js';
 import { CardTemplates } from './templates.js';
 
@@ -138,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
     storageService = createFirebaseService((user) => {
         currentUser = user;
         if (user) {
-            console.log("User logged in:", user.uid);
             
             // UI Update: Logged In
             if (user.isAnonymous) {
@@ -183,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showDashboard();
         } else {
             // Not Logged In
-            console.log("User not logged in");
             if(loginBtn) loginBtn.classList.remove('hidden');
             if(userDisplayName) userDisplayName.classList.add('hidden');
             if(logoutBtn) logoutBtn.classList.add('hidden');

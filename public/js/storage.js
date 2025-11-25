@@ -1,6 +1,5 @@
 // public/js/storage.js
 import { 
-    signInAnonymously, 
     onAuthStateChanged,
     GoogleAuthProvider,
     signInWithPopup,
@@ -17,54 +16,23 @@ import {
     getDocs,
     getDoc,
     increment,
-    where,
-    limit
+    limit,
+    where
 } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
 import { db, auth, appId } from './config.js';
 
 const LOCAL_STORAGE_KEY = 'omniCardsData';
 
-// --- Local Storage Service ---
-export function createLocalStorageService(handleDataUpdate, userIdEl) {
-    
-    // (Bleibt unverändert für lokale Funktion)
-    return {
-        init: () => {
-            const cards = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
-            handleDataUpdate(cards);
-            if(userIdEl) userIdEl.textContent = "Lokaler Speicher";
-        },
-        addCardToDeck: async (deckId, card) => { // Angepasst für Kompatibilität
-            const cards = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
-            card.id = crypto.randomUUID(); 
-            cards.push(card);
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cards));
-            handleDataUpdate(cards);
-        },
-        // ... (Update/Delete für LocalStorage müsste auch angepasst werden, aber Fokus ist Cloud)
-        updateCard: async (deckId, cardId, data) => {
-             // Einfache Mock-Implementation für LocalStorage falls benötigt
-        },
-        deleteCard: async (deckId, cardId) => {
-             // Einfache Mock-Implementation
-        },
-        createDeck: async () => alert("Decks im lokalen Modus noch nicht unterstützt"),
-        subscribeDecks: () => {},
-        subscribeCards: () => {}
-    };
-}
-
 // --- Firebase Service ---
-// WICHTIG: Erster Parameter ist jetzt onAuthChange (Callback für User-Status)
 export function createFirebaseService(onAuthChange, userIdEl, errorContainer, unsubscribeRef) {
-    // Interne Funktion zum Löschen eines öffentlichen Decks
-    const _deletePublicDeckInternal = async (publicDeckId, userId) => {
+    
+    // Helper: Internes Löschen eines öffentlichen Decks
+    const _deletePublicDeckInternal = async (publicDeckId) => {
         // 1. Karten löschen
         const cardsRef = collection(db, `/artifacts/${appId}/public_decks/${publicDeckId}/cards`);
         const cardsSnap = await getDocs(cardsRef);
-        const deletePromises = [];
-        cardsSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
+        const deletePromises = cardsSnap.docs.map(doc => deleteDoc(doc.ref));
         await Promise.all(deletePromises);
 
         // 2. Deck löschen
@@ -75,32 +43,25 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
     return {
         init: async () => {
             try {
-                // Hier hören wir NUR auf den Login-Status
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         if(userIdEl) userIdEl.textContent = `Cloud: ${user.uid.substring(0, 8)}...`;
-                        // Wir geben den USER zurück an app.js, NICHT die Karten
                         onAuthChange(user);
                     } else {
                         if(userIdEl) userIdEl.textContent = "Nicht angemeldet";
                         onAuthChange(null);
                     }
                 });
-
-                // Versuchen, anonym einzuloggen, falls kein Google-User da ist
-                // (Optional, kann man auch weglassen, wenn man Login erzwingen will)
-                // await signInAnonymously(auth); 
-
             } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                if(errorContainer) errorContainer.innerHTML = `<div class="text-red-500">Firebase Error: ${error.message}</div>`;
+                console.error("Firebase Init Error:", error);
+                if(errorContainer) errorContainer.innerHTML = `<div class="text-red-500">Error: ${error.message}</div>`;
             }
         },
 
-        // Login mit Google
+        // --- Auth ---
         loginWithGoogle: async () => {
-            const provider = new GoogleAuthProvider();
             try {
+                const provider = new GoogleAuthProvider();
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Login Error:", error);
@@ -108,7 +69,6 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             }
         },
 
-        // Logout
         logout: async () => {
             try {
                 await signOut(auth);
@@ -118,24 +78,20 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             }
         },
 
-        // --- Deck & Card Logic ---
+        // --- Deck & Card Management (Private) ---
 
-        // 1. Alle Decks des Users abonnieren
         subscribeDecks: (onDecksUpdate) => {
             const user = auth.currentUser;
             if (!user) return;
             
             const decksRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks`);
-            const q = query(decksRef);
-
-            return onSnapshot(q, (snapshot) => {
+            return onSnapshot(query(decksRef), (snapshot) => {
                 const decks = [];
                 snapshot.forEach((doc) => decks.push({ id: doc.id, ...doc.data() }));
                 onDecksUpdate(decks);
             });
         },
 
-        // 2. Ein neues Deck erstellen
         createDeck: async (title, type = 'standard') => {
             const user = auth.currentUser;
             if (!user) return;
@@ -148,44 +104,42 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             });
         },
 
-        // 3. Karten eines Decks abonnieren
+        updateDeck: async (deckId, data) => {
+            const user = auth.currentUser;
+            if (!user || !deckId) throw new Error("Auth required");
+            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
+            await setDoc(deckRef, data, { merge: true });
+        },
+
         subscribeCards: (deckId, onCardsUpdate) => {
             const user = auth.currentUser;
             if (!user || !deckId) return;
 
             const cardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
             
-            // Alten Listener stoppen falls vorhanden
             if (unsubscribeRef.current) unsubscribeRef.current();
 
-            const q = query(cardsRef);
-            unsubscribeRef.current = onSnapshot(q, (snapshot) => {
+            unsubscribeRef.current = onSnapshot(query(cardsRef), (snapshot) => {
                 const cards = [];
                 snapshot.forEach((doc) => cards.push({ id: doc.id, ...doc.data() }));
                 onCardsUpdate(cards);
             });
-            
-            // Rückgabe einer Funktion zum Stoppen DIESES Listeners
             return unsubscribeRef.current;
         },
 
-        // 4. Karte hinzufügen
-        // 4. Add card (and increment count)
         addCardToDeck: async (deckId, card) => {
             const user = auth.currentUser;
             if (!user || !deckId) return;
             
-            // 1. Save card
+            // 1. Karte speichern
             const cardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
             await addDoc(cardsRef, card);
 
-            // 2. Increment deck counter
+            // 2. Zähler hochsetzen
             const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
-            // We use setDoc with merge: true so we don't overwrite other deck data
             await setDoc(deckRef, { cardCount: increment(1) }, { merge: true });
         },
 
-        // 5. Karte aktualisieren
         updateCard: async (deckId, cardId, data) => {
             const user = auth.currentUser;
             if (!user || !deckId) return;
@@ -193,222 +147,157 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             await setDoc(cardRef, data, { merge: true });
         },
 
-        // 6. Karte löschen
         deleteCard: async (deckId, cardId) => {
             const user = auth.currentUser;
             if (!user || !deckId) return;
             
-            // 1. Delete card
+            // 1. Löschen
             const cardRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards/${cardId}`);
             await deleteDoc(cardRef);
 
-            // 2. Decrement deck counter
+            // 2. Zähler runtersetzen
             const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
             await setDoc(deckRef, { cardCount: increment(-1) }, { merge: true });
         },
 
-        // 7. Deck VERÖFFENTLICHEN (Kopie von Privat -> Public)
-        publishDeck: async (deckId) => {
+        deleteDeckFull: async (deckId) => {
             const user = auth.currentUser;
-            if (!user || !deckId) return;
+            if (!user || !deckId) throw new Error("Nicht eingeloggt");
 
-            // A. Original Deck Daten holen
-            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
-            // B. Original Karten holen
+            // 1. Private Karten löschen
             const cardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
-            
-            // Wir nutzen Promise.all für Geschwindigkeit
-            // eslint-disable-next-line no-undef
-            const [deckSnap, cardsSnap] = await Promise.all([
-                // eslint-disable-next-line no-undef
-                // getDoc muss importiert werden! (siehe oben in storage.js imports)
-                // Da wir getDoc noch nicht importiert haben, nutzen wir einen Trick oder fügen es hinzu.
-                // Besser: Wir fügen getDoc und getDocs zu den Imports hinzu (siehe unten).
-            ]);
-            // STOP: Um Fehler zu vermeiden, importieren wir erst die fehlenden Funktionen.
-            // (Siehe Anweisung unter diesem Code-Block)
+            const cardsSnap = await getDocs(cardsRef);
+            const deletePromises = cardsSnap.docs.map(doc => deleteDoc(doc.ref));
+            await Promise.all(deletePromises);
+
+            // 2. Privates Deck löschen
+            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
+            await deleteDoc(deckRef);
+
+            // 3. Öffentliche Kopien suchen & löschen (Auto-Cleanup)
+            try {
+                const publicDecksRef = collection(db, `/artifacts/${appId}/public_decks`);
+                const q = query(publicDecksRef, where("originalDeckId", "==", deckId));
+                const publicSnap = await getDocs(q);
+                
+                const publicDeletePromises = publicSnap.docs.map(doc => 
+                    _deletePublicDeckInternal(doc.id)
+                );
+                await Promise.all(publicDeletePromises);
+            } catch (err) {
+                console.warn("Auto-Delete public copy failed (might not exist):", err);
+            }
         },
 
-        // --- Da wir oben Imports brauchen, hier die fertigen Funktionen für Copy/Paste ---
-        // (Füge diese Funktionen ein, nachdem du die Imports oben aktualisiert hast!)
+        // --- Marketplace (Public) ---
 
         publishDeckFull: async (deckId, deckData) => { 
-            // deckData übergeben wir direkt aus der App, um einen Lesezugriff zu sparen
             const user = auth.currentUser;
             if (!user) throw new Error("Nicht eingeloggt");
-            
 
-            // 1. Das Deck im 'public_decks' Ordner erstellen
+            // 1. Public Deck erstellen
             const publicDecksRef = collection(db, `/artifacts/${appId}/public_decks`);
             const newPublicDeckRef = await addDoc(publicDecksRef, {
                 title: deckData.title,
                 type: deckData.type || 'standard',
                 originalAuthor: user.displayName || "Anonym",
                 originalAuthorId: user.uid,
-                originalDeckId: deckId, // <--- NEU: Verknüpfung zum Original
+                originalDeckId: deckId,
                 publishedAt: new Date().toISOString(),
                 cardCount: deckData.cardCount || 0
             });
 
-            // 2. Alle Karten holen (Privat)
+            // 2. Karten kopieren
             const privateCardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
-            const q = query(privateCardsRef);
+            const querySnapshot = await getDocs(query(privateCardsRef));
             
-            // WICHTIG: getDocs muss importiert sein (siehe Schritt 2a)
-            // eslint-disable-next-line no-undef
-            const querySnapshot = await getDocs(q);
-
-            // 3. Karten in den öffentlichen Ordner kopieren
             const publicCardsRef = collection(db, `/artifacts/${appId}/public_decks/${newPublicDeckRef.id}/cards`);
-            
-            const batchPromises = [];
-            querySnapshot.forEach((doc) => {
+            const batchPromises = querySnapshot.docs.map(doc => {
                 const data = doc.data();
-                // SRS Level zurücksetzen beim Veröffentlichen!
-                const publicCard = {
+                return addDoc(publicCardsRef, {
                     front: data.front || data.german,
                     back: data.back || data.chinese,
                     extra: data.extra || data.pinyin || '',
-                    srsLevel: 0, // Reset für neue Nutzer
+                    srsLevel: 0, 
                     consecutiveCorrect: 0
-                };
-                batchPromises.push(addDoc(publicCardsRef, publicCard));
+                });
             });
 
             await Promise.all(batchPromises);
             return newPublicDeckRef.id;
         },
 
-        // 8. Öffentliche Decks abonnieren
         subscribePublicDecks: (onUpdate) => {
             const publicDecksRef = collection(db, `/artifacts/${appId}/public_decks`);
-            const q = query(publicDecksRef); // Man könnte hier noch .orderBy('publishedAt') machen
-
-            return onSnapshot(q, (snapshot) => {
+            // Optional: Limit auf 100 o.ä. für Performance
+            return onSnapshot(query(publicDecksRef), (snapshot) => {
                 const decks = [];
                 snapshot.forEach((doc) => decks.push({ id: doc.id, ...doc.data() }));
                 onUpdate(decks);
             });
         },
 
-        // 9. Deck IMPORTIEREN (Kopie von Public -> Privat)
+        getPublicDeckPreview: async (publicDeckId) => {
+            const cardsRef = collection(db, `/artifacts/${appId}/public_decks/${publicDeckId}/cards`);
+            const q = query(cardsRef, limit(5));
+            const snapshot = await getDocs(q);
+            return snapshot.docs.map(doc => doc.data());
+        },
+
         importDeck: async (publicDeckId) => {
             const user = auth.currentUser;
             if (!user) throw new Error("Nicht eingeloggt");
 
-            // A. Öffentliches Deck lesen (wir brauchen getDoc)
-            // eslint-disable-next-line no-undef
+            // 1. Public Deck lesen
             const publicDeckRef = doc(db, `/artifacts/${appId}/public_decks/${publicDeckId}`);
-            // eslint-disable-next-line no-undef
             const deckSnap = await getDoc(publicDeckRef);
-            
             if (!deckSnap.exists()) throw new Error("Deck nicht gefunden");
             const deckData = deckSnap.data();
 
-            // B. Neues Privates Deck erstellen
+            // 2. Privates Deck erstellen
             const myDecksRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks`);
             const newMyDeckRef = await addDoc(myDecksRef, {
-                title: deckData.title + " (Import)", // Name anpassen
+                title: deckData.title + " (Import)",
                 type: deckData.type || 'standard',
                 createdAt: new Date().toISOString(),
                 cardCount: deckData.cardCount || 0,
                 isImported: true
             });
 
-            // C. Öffentliche Karten holen
+            // 3. Karten kopieren
             const publicCardsRef = collection(db, `/artifacts/${appId}/public_decks/${publicDeckId}/cards`);
-            // eslint-disable-next-line no-undef
             const cardsSnap = await getDocs(query(publicCardsRef));
 
-            // D. In mein privates Deck kopieren
             const myCardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${newMyDeckRef.id}/cards`);
-            const batchPromises = [];
-            
-            cardsSnap.forEach((doc) => {
+            const batchPromises = cardsSnap.docs.map(doc => {
                 const data = doc.data();
-                batchPromises.push(addDoc(myCardsRef, {
+                return addDoc(myCardsRef, {
                     front: data.front,
                     back: data.back,
                     extra: data.extra || '',
                     srsLevel: 0,
                     consecutiveCorrect: 0,
                     createdAt: new Date().toISOString()
-                }));
+                });
             });
 
             await Promise.all(batchPromises);
         },
-        // 10. Deck und alle seine Karten löschen
-        deleteDeckFull: async (deckId) => {
-            const user = auth.currentUser;
-            if (!user || !deckId) throw new Error("Nicht eingeloggt");
 
-            // --- 1. Privates Deck löschen (wie bisher) ---
-            const cardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
-            const cardsSnap = await getDocs(cardsRef);
-            const deletePromises = [];
-            cardsSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
-            await Promise.all(deletePromises);
-
-            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
-            await deleteDoc(deckRef);
-
-            // --- 2. NEU: Öffentliche Kopien suchen & löschen ---
-            try {
-                const publicDecksRef = collection(db, `/artifacts/${appId}/public_decks`);
-                // Suche alle Decks, die von MIR sind UND von DIESEM Deck abstammen
-                const q = query(publicDecksRef, 
-                    where("originalAuthorId", "==", user.uid),
-                    where("originalDeckId", "==", deckId)
-                );
-                const publicSnap = await getDocs(q);
-                
-                const publicDeletePromises = [];
-                publicSnap.forEach((doc) => {
-                    console.log("Lösche öffentliche Kopie:", doc.id);
-                    publicDeletePromises.push(_deletePublicDeckInternal(doc.id, user.uid));
-                });
-                await Promise.all(publicDeletePromises);
-            } catch (err) {
-                console.error("Fehler beim Löschen der öffentlichen Kopien:", err);
-                // Wir werfen hier keinen Fehler, damit das private Löschen als "erfolgreich" gilt
-            }
-        },
-        // 11. Öffentliches Deck manuell löschen
         deletePublicDeck: async (publicDeckId) => {
             const user = auth.currentUser;
             if (!user) throw new Error("Nicht eingeloggt");
             
-            // Sicherheitscheck: Gehört das Deck mir?
             const deckRef = doc(db, `/artifacts/${appId}/public_decks/${publicDeckId}`);
             const deckSnap = await getDoc(deckRef);
             
             if (!deckSnap.exists()) throw new Error("Deck nicht gefunden");
             if (deckSnap.data().originalAuthorId !== user.uid) {
-                throw new Error("Du kannst nur deine eigenen Decks löschen.");
+                throw new Error("Nur eigene Decks löschbar.");
             }
 
-            await _deletePublicDeckInternal(publicDeckId, user.uid);
-        },
-        // 12. Deck Metadaten aktualisieren (z.B. Titel)
-        updateDeck: async (deckId, data) => {
-            const user = auth.currentUser;
-            if (!user || !deckId) throw new Error("Nicht eingeloggt");
-            
-            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
-            await setDoc(deckRef, data, { merge: true });
-        },
-        // 13. Vorschau-Karten laden (Public)
-        getPublicDeckPreview: async (publicDeckId) => {
-            // Wir brauchen hier keinen User-Check, da Public Decks "public" sind
-            const cardsRef = collection(db, `/artifacts/${appId}/public_decks/${publicDeckId}/cards`);
-            // Nur die ersten 5 Karten holen
-            const q = query(cardsRef, limit(5));
-            const snapshot = await getDocs(q);
-            
-            const cards = [];
-            snapshot.forEach(doc => cards.push(doc.data()));
-            return cards;
-        },
+            await _deletePublicDeckInternal(publicDeckId);
+        }
     };
 }
+// LocalStorage Service entfernt, da nicht mehr aktiv genutzt.

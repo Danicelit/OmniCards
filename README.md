@@ -4,39 +4,42 @@
 
 OmniCards is a web application designed to help users internalize learning content efficiently using a "Spaced Repetition System" (SRS). Unlike simple vocabulary trainers, OmniCards supports complex content through a flexible template system, including mathematical formulas (LaTeX) and language-specific features (e.g., Pinyin conversion).
 
-> **Note:** While the documentation and codebase are in English, the current User Interface (UI) of the application is primarily in German. Multi-language support for the UI is planned for Phase 3.
+> **Note:** While the documentation and codebase are in English, the current User Interface (UI) of the application is primarily in German.
 
 ---
 
 ## 🗺️ Roadmap & Open Tasks
 
-Here is the current development plan, sorted by priority.
+Following a comprehensive testing phase (v1.0), the following roadmap has been established to address UX inconsistencies, logic bugs, and architectural decisions.
 
-### 🚨 Phase 1: Stability & Critical Bugfixes
-- [x] **Bugfix:** Empty card back during study session (rendering issue).
-- [x] **Bugfix:** Imported cards display "undefined" (data structure compatibility).
-- [x] **Bugfix:** Card carrying over from different deck.
-- [x] **Bugfix:** Remove duplicate "Add new card" UI element.
-- [x] **Bugfix:** Header title ("OmniCards") does not reset when returning to the dashboard.
-- [x] **Bugfix:** Card count in dashboard always shows "0".
-- [x] **Bugfix:** User avatar is not consistently displayed after login.
+### 🚨 Phase 1: Critical Bugfixes & Logic
+- [ ] **Bugfix:** Dashboard tab navigation style does not update correctly (Blue underline remains on "My Decks").
+- [ ] **Bugfix:** Restore sorting indicators (arrows) in the deck card table.
+- [ ] **Bugfix:** "Delete Public Deck" permission error (Rules adjustment needed).
+- [ ] **Bugfix:** Deleting the currently active card causes "undefined" ghost card in the study session.
+- [ ] **Logic:** Trigger immediate queue rebuild/card refresh when changing "Study Mode" (Front/Back/Random).
+- [ ] **Logic:** Make the "Edit Card" modal dynamic (currently hardcoded to Chinese fields, breaks for Math decks).
 
-### 🛠 Phase 2: Deck Management & Core Features
-- [x] **Feature:** Delete decks (with security confirmation & sync to marketplace).
-- [x] **Feature:** Rename decks.
-- [x] **Feature:** Extended dashboard sorting (Last opened, Name, Card count).
-- [ ] **Feature:** Pin "Last opened deck" to the top.
+### 🎨 Phase 2: UI/UX Polish (No more System Alerts)
+- [ ] **Refactor:** Replace native browser `confirm()` and `alert()` with custom, styled Modals (for deletion, publishing, etc.).
+- [ ] **UX:** Improve "Empty Deck" state:
+    - Change text from "Good job!" to "Add cards to start".
+    - Hide "All cards learned" message when deck is actually empty.
+- [ ] **UX:** Improve feedback messages (Toast notifications instead of text labels).
 
-### ⚙️ Phase 3: Settings & Personalization
-- [x] **Feature:** New settings menu (Modal).
+### 🏗️ Phase 3: Architecture & Marketplace Evolution
+- [ ] **Architecture:** Decide on **Synchronization vs. Snapshot** model for Public Decks.
+    - *Current:* Public decks are snapshots (no updates).
+    - *Goal:* Discuss if updates to private decks should reflect on public ones.
+- [ ] **Feature:** Prevent duplicate publishing of the same deck by the same user.
+- [ ] **Feature:** Implement "Delete Public Copy" automatically when Private Deck is deleted (requires Sync/Link logic fix).
+
+### ⚙️ Phase 4: Maintenance & Settings
 - [ ] **Feature:** UI Language selection (German/English).
-- [x] **Feature:** Dark Mode.
-- [x] **Feature:** Customizable study modes (Front only, Back only, Random).
-
-### 🚀 Phase 4: Marketplace & Community
-- [x] **Feature:** Deck preview before importing (Modal with sample cards).
-- [x] **Feature:** Search and filter functionality in the marketplace.
-- [x] **Feature:** Automatic deletion from marketplace when the private source deck is deleted.
+- [ ] **Maintenance:** Investigate and suppress console warnings:
+    - `ERR_BLOCKED_BY_CLIENT` (Firebase channel issues with AdBlockers).
+    - `Cross-Origin-Opener-Policy` (Google Auth warnings).
+    - Handle Firebase timeouts gracefully.
 
 ---
 
@@ -47,15 +50,14 @@ OmniCards was born out of the need to learn specific content—particularly Chin
 The app relies on **Google Firebase** as a backend, enabling real-time synchronization across devices, secure user authentication, and a scalable database. The frontend is intentionally kept "lightweight" (Vanilla JS & Tailwind CSS) to ensure maximum performance and easy maintainability.
 
 ### The MVP (Minimum Viable Product)
-The current MVP is almost fully functional and includes the following definitions:
+The current MVP is fully functional regarding core learning features:
 1.  **Multi-User Support:** Each user has their own protected data environment (Google Login).
 2.  **Template System:** Support for various card types:
     * *Standard:* Front/Back.
     * *Chinese:* Automatic Pinyin conversion (tone numbers to accents).
     * *Math:* Rendering of LaTeX formulas via KaTeX.
-3.  **Learning Algorithm:** A simple Spaced Repetition System that queries cards more or less frequently based on learning success (Levels 0-4).
+3.  **Learning Algorithm:** A simple Spaced Repetition System that queries cards more or less frequently based on learning success.
 4.  **Community Sharing:** The ability to publish own decks and import decks from other users.
-When the most urgent bugs are fixed, the MVP is fully functional.
 
 ---
 
@@ -65,8 +67,9 @@ When the most urgent bugs are fixed, the MVP is fully functional.
 * **🧮 Math Support:** Integrated rendering of LaTeX (e.g., `$$\int x dx$$`) makes the app ideal for university curriculum.
 * **🇨🇳 Pinyin Automation:** Inputs like `ni3hao3` are automatically converted to `nǐhǎo`.
 * **☁️ Cloud-First:** All data is stored securely in the Google Cloud (Firestore). No manual saving required.
-* **🤝 Marketplace:** Decks can be shared with friends with a single click. Importing creates a *copy*, ensuring your learning progress remains independent of the creator.
+* **🤝 Marketplace:** Decks can be shared with friends. Includes search, filtering (My Decks vs. Others), and preview functionality.
 * **📱 Installable (PWA):** Thanks to `manifest.json`, the web app can be installed on smartphones just like a native app.
+* **🌙 Dark Mode:** Fully supported dark theme that respects user preference.
 
 ---
 
