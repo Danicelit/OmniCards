@@ -1,12 +1,5 @@
 import { convertPinyinTones } from './utils.js';
 
-// Helfer: Holt Daten sicher
-const getVal = (card, field, fallback) => {
-    if (card[field] !== undefined && card[field] !== null && card[field] !== '') return card[field];
-    if (card[fallback] !== undefined && card[fallback] !== null && card[fallback] !== '') return card[fallback];
-    return ''; 
-};
-
 export const CardTemplates = {
     'standard': {
         name: 'Standard (Languages & Knowledge)',
@@ -14,13 +7,13 @@ export const CardTemplates = {
         fields: [
             { id: 'front', label: 'Front (Question)', placeholder: 'e.g., Dog', type: 'text' },
             { id: 'back', label: 'Back (Answer)', placeholder: 'e.g., Hund', type: 'text' },
-            { id: 'note', label: 'Note (Optional)', placeholder: 'Mnemonic...', type: 'text' }
+            { id: 'note', label: 'Note (Optional)', placeholder: 'Mnemonic...', type: 'text' } // 'note' wird in renderBack verwendet, ist ok. Wenn wir strikt sein wollen, mappen wir note -> extra. Aber note ist spezifisch für standard. Lassen wir es oder nutzen extra? Für Konsistenz: 'extra'.
+            // UPDATE: Lass uns 'note' im Standard Template auch zu 'extra' mappen, damit ALLES front/back/extra ist.
         ],
-        // FIX: dark:text-gray-100 für Lesbarkeit
-        renderFront: (card) => `<div class="text-3xl font-bold dark:text-gray-100">${getVal(card, 'front', 'german')}</div>`,
+        renderFront: (card) => `<div class="text-3xl font-bold dark:text-gray-100">${card.front}</div>`,
         renderBack: (card) => `
-            <div class="text-3xl font-bold mb-4 dark:text-gray-100">${getVal(card, 'back', 'chinese')}</div>
-            ${card.note ? `<div class="text-gray-500 dark:text-gray-400 italic text-lg">${card.note}</div>` : ''}
+            <div class="text-3xl font-bold mb-4 dark:text-gray-100">${card.back}</div>
+            ${card.extra ? `<div class="text-gray-500 dark:text-gray-400 italic text-lg">${card.extra}</div>` : ''}
         `
     },
     
@@ -31,7 +24,7 @@ export const CardTemplates = {
             { id: 'front', label: 'German Word', placeholder: 'e.g., Haus', type: 'text' },
             { id: 'back', label: 'Hanzi (Characters)', placeholder: 'e.g., 房子', type: 'text' },
             { 
-                id: 'pinyin', 
+                id: 'extra', // CLEANUP: War vorher 'pinyin'
                 label: 'Pinyin', 
                 placeholder: 'fang2zi', 
                 type: 'text', 
@@ -42,14 +35,11 @@ export const CardTemplates = {
                 }
             }
         ],
-        renderFront: (card) => `<div class="text-3xl font-bold dark:text-gray-100">${getVal(card, 'front', 'german')}</div>`,
-        renderBack: (card) => {
-            const pinyin = getVal(card, 'pinyin', 'extra');
-            return `
-            <div class="text-5xl font-bold mb-2 font-serif dark:text-gray-100">${getVal(card, 'back', 'chinese')}</div>
-            <div class="text-2xl text-blue-600 dark:text-blue-400 mb-4">${pinyin}</div>
-            `;
-        }
+        renderFront: (card) => `<div class="text-3xl font-bold dark:text-gray-100">${card.front}</div>`,
+        renderBack: (card) => `
+            <div class="text-5xl font-bold mb-2 font-serif dark:text-gray-100">${card.back}</div>
+            <div class="text-2xl text-blue-600 dark:text-blue-400 mb-4">${card.extra}</div>
+        `
     },
 
     'math': {
@@ -58,12 +48,12 @@ export const CardTemplates = {
         fields: [
             { id: 'front', label: 'Problem / Concept', placeholder: 'e.g., Derivative of $$ x^2 $$', type: 'text' },
             { id: 'back', label: 'Solution / Formula', placeholder: 'e.g., $$ 2x $$', type: 'text' },
-            { id: 'hint', label: 'Hint (Optional)', placeholder: 'Rule...', type: 'text' }
+            { id: 'extra', label: 'Hint (Optional)', placeholder: 'Rule...', type: 'text' } // War 'hint'
         ],
-        renderFront: (card) => `<div class="text-2xl dark:text-gray-100">${getVal(card, 'front', 'german')}</div>`,
+        renderFront: (card) => `<div class="text-2xl dark:text-gray-100">${card.front}</div>`,
         renderBack: (card) => `
-            <div class="text-2xl mb-4 text-blue-700 dark:text-blue-400">${getVal(card, 'back', 'chinese')}</div>
-            ${card.hint ? `<div class="text-sm text-gray-500 dark:text-gray-400 border-t dark:border-gray-600 pt-2 mt-2">Hint: ${card.hint}</div>` : ''}
+            <div class="text-2xl mb-4 text-blue-700 dark:text-blue-400">${card.back}</div>
+            ${card.extra ? `<div class="text-sm text-gray-500 dark:text-gray-400 border-t dark:border-gray-600 pt-2 mt-2">Hint: ${card.extra}</div>` : ''}
         `
     }
 };

@@ -14,7 +14,7 @@ const LOCAL_STORAGE_KEY = 'chineseCards';
 let currentStorageMode = 'firebase';
 let storageService = null;
 let currentEditCardId = null;
-let currentSort = { column: 'german', direction: 'asc' };
+let currentSort = { column: 'front', direction: 'asc' };
 
 let allCards = []; 
 let reviewQueue = []; 
@@ -193,6 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }, userIdEl, firebaseErrorContainer, unsubscribeRef);
 
     storageService.init();
+
+    window.migrate = () => storageService.migrateLegacyData();
 
     // 2. General Event Listeners
     if (backToDashboardBtn) backToDashboardBtn.addEventListener('click', showDashboard);
@@ -566,9 +568,9 @@ function showNextCard() {
         // WICHTIG: Wir nutzen die "getVal" Logik aus templates.js indirekt,
         // indem wir hier die Hauptfelder vertauschen.
         
-        // Hole die echten Werte (egal ob front/back oder german/chinese)
-        const realFront = displayCard.front || displayCard.german || '';
-        const realBack = displayCard.back || displayCard.chinese || '';
+        // Hole die echten Werte
+        const realFront = displayCard.front || '';
+        const realBack = displayCard.back || '';
 
         // Tauschen
         displayCard.front = realBack;
@@ -642,9 +644,9 @@ async function handleCardListActions(e) {
         if (cardToEdit) {
             currentEditCardId = cardId;
             // Simple mapping fallback
-            editFrontInput.value = cardToEdit.front || cardToEdit.german || '';
-            editBackInput.value = cardToEdit.back || cardToEdit.chinese || '';
-            editExtraInput.value = cardToEdit.extra || cardToEdit.pinyin || '';
+            editFrontInput.value = cardToEdit.front || '';
+            editBackInput.value = cardToEdit.back || '';
+            editExtraInput.value = cardToEdit.extra || '';
             openEditModal();
         }
     }
@@ -658,10 +660,6 @@ async function handleUpdateCard(e) {
         front: editFrontInput.value.trim(),
         back: editBackInput.value.trim(),
         extra: editExtraInput.value.trim(),
-        // Legacy
-        german: editFrontInput.value.trim(),
-        chinese: editBackInput.value.trim(),
-        pinyin: editExtraInput.value.trim()
     };
 
     try {
@@ -953,15 +951,45 @@ function renderCardList() {
     // ... Sortierlogik hier (vereinfacht für Übersicht) ...
     const { column, direction } = currentSort;
     sortedCards.sort((a, b) => {
-         const valA = (a[column] || a.front || '').toLowerCase();
-         const valB = (b[column] || b.front || '').toLowerCase();
-         return direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        let valA, valB;
+
+        // Werte basierend auf Spalte holen (mit Fallbacks für alte Daten)
+        switch (column) {
+            case 'front':
+                valA = (a.front || '').toLowerCase();
+                valB = (b.front || '').toLowerCase();
+                break;
+            case 'back': 
+                valA = (a.back || '').toLowerCase();
+                valB = (b.back || '').toLowerCase();
+                break;
+            case 'extra': 
+                valA = (a.extra || '').toLowerCase();
+                valB = (b.extra || '').toLowerCase();
+                break;
+            case 'level':
+                // Bei Level sortieren wir erst nach Level, dann nach Success-Count
+                if (a.srsLevel !== b.srsLevel) {
+                    return direction === 'asc' ? a.srsLevel - b.srsLevel : b.srsLevel - a.srsLevel;
+                }
+                return direction === 'asc' ? a.consecutiveCorrect - b.consecutiveCorrect : b.consecutiveCorrect - a.consecutiveCorrect;
+            default:
+                valA = (a[column] || '').toString().toLowerCase();
+                valB = (b[column] || '').toString().toLowerCase();
+        }
+
+        // String Vergleich für Text-Spalten
+        if (valA < valB) return direction === 'asc' ? -1 : 1;
+        if (valA > valB) return direction === 'asc' ? 1 : -1;
+        return 0;
     });
 
     if (sortedCards.length === 0) {
         cardListBody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">Keine Karten.</td></tr>';
         return;
     }
+
+    updateSortIndicators();
     
     sortedCards.forEach((card, index) => {
         const colorClass = getLevelColorClass(card.srsLevel, card.consecutiveCorrect);
@@ -1298,5 +1326,30 @@ function renderPublicDeckList() {
         }
         
         publicDeckListContainer.appendChild(div);
+    });
+}
+
+function updateSortIndicators() {
+    // 1. Alle Header mit Sortier-Funktion suchen
+    const headers = document.querySelectorAll('th[data-sort]');
+    
+    headers.forEach(th => {
+        const column = th.dataset.sort;
+        const indicator = th.querySelector('.sort-indicator');
+        
+        // Prüfen: Ist das die aktuelle Spalte?
+        if (column === currentSort.column) {
+            // Pfeil setzen
+            indicator.textContent = currentSort.direction === 'asc' ? ' ▲' : ' ▼';
+            // Optional: Farbe hervorheben (aktive Spalte)
+            th.classList.add('text-blue-600', 'dark:text-blue-400');
+            th.classList.remove('text-gray-500', 'dark:text-gray-300');
+        } else {
+            // Pfeil entfernen
+            indicator.textContent = '';
+            // Farbe zurücksetzen
+            th.classList.remove('text-blue-600', 'dark:text-blue-400');
+            th.classList.add('text-gray-500', 'dark:text-gray-300');
+        }
     });
 }
