@@ -87,9 +87,34 @@
             </div>
 
             <div id="community-section" class="hidden">
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex flex-col gap-4 mb-6">
                     <p class="text-gray-600 dark:text-gray-400">Entdecke Decks von anderen Nutzern und importiere sie.</p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-grow">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                            <input type="text" id="public-search-input" class="pl-10 w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Suche nach Titel, Thema oder Autor...">
+                        </div>
+
+                        <select id="public-filter-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm cursor-pointer w-full sm:w-auto">
+                            <option value="all">Alle Decks</option>
+                            <option value="mine">Meine Uploads</option>
+                            <option value="others">Von Anderen</option>
+                        </select>
+
+                        <select id="public-sort-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm cursor-pointer sm:w-auto w-full">
+                            <option value="newest">Neueste zuerst</option>
+                            <option value="oldest">Älteste zuerst</option>
+                            <option value="name">Name (A-Z)</option>
+                            <option value="cards">Meiste Karten</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div id="public-deck-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg text-center text-gray-500 dark:text-gray-400">
                         Lade Community Decks...

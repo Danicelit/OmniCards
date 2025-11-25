@@ -35,8 +35,8 @@ Here is the current development plan, sorted by priority.
 
 ### 🚀 Phase 4: Marketplace & Community
 - [x] **Feature:** Deck preview before importing (Modal with sample cards).
-- [ ] **Feature:** Search and filter functionality in the marketplace.
-- [ ] **Feature:** Automatic deletion from marketplace when the private source deck is deleted.
+- [x] **Feature:** Search and filter functionality in the marketplace.
+- [x] **Feature:** Automatic deletion from marketplace when the private source deck is deleted.
 
 ---
 

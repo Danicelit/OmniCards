@@ -30,6 +30,8 @@ let currentStudyMode = 'standard'; // 'standard', 'reverse', 'random'
 
 let currentPreviewDeckId = null;
 
+let allPublicDecks = []; // Cache für alle geladenen Public Decks
+
 // --- DOM Elements ---
 const appContainer = document.getElementById('app-container');
 const firebaseErrorContainer = document.getElementById('firebase-error-container');
@@ -124,6 +126,10 @@ const previewCardsList = document.getElementById('preview-cards-list');
 const previewImportBtn = document.getElementById('preview-import-btn');
 const previewCancelBtn = document.getElementById('preview-cancel-btn');
 const closePreviewBtn = document.getElementById('close-preview-btn');
+
+const publicSearchInput = document.getElementById('public-search-input');
+const publicSortSelect = document.getElementById('public-sort-select');
+const publicFilterSelect = document.getElementById('public-filter-select');
 
 
 // --- Initialization ---
@@ -307,6 +313,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if(previewModal) previewModal.addEventListener('click', (e) => {
         if (e.target === previewModal) closePreviewModal();
     });
+
+    // Marketplace Search & Sort Listeners
+    if (publicSearchInput) {
+        publicSearchInput.addEventListener('input', () => renderPublicDeckList());
+    }
+    if (publicSortSelect) {
+        publicSortSelect.addEventListener('change', () => renderPublicDeckList());
+    }
+
+    if (publicFilterSelect) {
+        publicFilterSelect.addEventListener('change', () => renderPublicDeckList());
+    }
 });
 
 
@@ -868,92 +886,10 @@ function switchTab(tab) {
 
 function loadPublicDecks() {
     if (unsubscribeDecks && storageService.subscribePublicDecks) {
-        // Hier nutzen wir einen neuen Listener
+        // Wir nutzen den Listener, um die Daten aktuell zu halten
         storageService.subscribePublicDecks((decks) => {
-            publicDeckListContainer.innerHTML = '';
-            if (decks.length === 0) {
-                publicDeckListContainer.innerHTML = '<p class="text-gray-500">Keine Decks gefunden.</p>';
-                return;
-            }
-            decks.forEach(deck => {
-                const div = document.createElement('div');
-                // FIX: dark:bg-gray-800 dark:border-gray-700
-                div.className = "p-6 bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700";
-                
-                const isMyDeck = currentUser && deck.originalAuthorId === currentUser.uid;
-
-            let actionBtnHtml = '';
-            
-            if (isMyDeck) {
-                // Fall 1: Mein Deck -> Nur Löschen
-                actionBtnHtml = `
-                    <button class="delete-public-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
-                        🗑 Löschen
-                    </button>`;
-            } else {
-                // Fall 2: Fremdes Deck -> Vorschau UND Importieren
-                // Wir nutzen ein Flex-Container für zwei Buttons nebeneinander
-                actionBtnHtml = `
-                    <div class="flex space-x-2">
-                        <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="Vorschau" data-id="${deck.id}">
-                            👁
-                        </button>
-                        <button class="import-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-1 rounded text-sm font-medium transition" title="Direkt Importieren" data-id="${deck.id}">
-                            ⬇ Import
-                        </button>
-                    </div>`;
-            }
-
-            div.innerHTML = `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="font-bold text-xl text-gray-800 dark:text-gray-100">${deck.title}</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">von ${deck.originalAuthor} ${isMyDeck ? '(Du)' : ''}</p>
-                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} Karten</p>
-                    </div>
-                    ${actionBtnHtml}
-                </div>
-            `;
-
-            // Event Listener hinzufügen
-            if (isMyDeck) {
-                div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    if (confirm(`Möchtest du dein öffentliches Deck "${deck.title}" wirklich löschen?`)) {
-                        try {
-                            await storageService.deletePublicDeck(deck.id);
-                            alert("Deck vom Marktplatz entfernt.");
-                        } catch (err) {
-                            console.error(err);
-                            alert("Fehler: " + err.message);
-                        }
-                    }
-                });
-            } else {
-                // Listener für VORSCHAU (Auge)
-                div.querySelector('.preview-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    openPreviewModal(deck);
-                });
-
-                // Listener für IMPORT (Pfeil) - Wiederhergestellt!
-                div.querySelector('.import-btn').addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    if (confirm(`Möchtest du "${deck.title}" direkt importieren?`)) {
-                        try {
-                            await storageService.importDeck(deck.id);
-                            alert("Deck erfolgreich importiert!");
-                            switchTab('my-decks');
-                        } catch (err) {
-                            console.error(err);
-                            alert("Fehler beim Import: " + err.message);
-                        }
-                    }
-                });
-            }
-            
-            publicDeckListContainer.appendChild(div);
-            });
+            allPublicDecks = decks; // Speichern
+            renderPublicDeckList(); // Anzeigen (mit aktuellem Filter)
         });
     }
 }
@@ -1215,3 +1151,132 @@ function openEditModal() { editCardModal.classList.remove('opacity-0', 'pointer-
 function closeEditModal() { editCardModal.classList.add('opacity-0', 'pointer-events-none'); editModalContent.classList.add('scale-95', 'opacity-0'); currentEditCardId = null; }
 function openQueueModal() { queueModal.classList.remove('opacity-0', 'pointer-events-none'); queueModalContent.classList.remove('scale-95', 'opacity-0'); }
 function closeQueueModal() { queueModal.classList.add('opacity-0', 'pointer-events-none'); queueModalContent.classList.add('scale-95', 'opacity-0'); }
+
+function renderPublicDeckList() {
+    publicDeckListContainer.innerHTML = '';
+    
+    // 1. Inputs lesen
+    const searchTerm = publicSearchInput ? publicSearchInput.value.toLowerCase().trim() : '';
+    const filterMode = publicFilterSelect ? publicFilterSelect.value : 'all'; // 'all', 'mine', 'others'
+    
+    // 2. Filtern
+    let filteredDecks = allPublicDecks.filter(deck => {
+        const isMyDeck = currentUser && deck.originalAuthorId === currentUser.uid;
+
+        // A. Text-Suche
+        const matchesSearch = !searchTerm || (
+            (deck.title || '').toLowerCase().includes(searchTerm) ||
+            (deck.originalAuthor || '').toLowerCase().includes(searchTerm) ||
+            (deck.type || '').toLowerCase().includes(searchTerm)
+        );
+
+        // B. Besitz-Filter
+        let matchesFilter = true;
+        if (filterMode === 'mine') matchesFilter = isMyDeck;
+        if (filterMode === 'others') matchesFilter = !isMyDeck;
+
+        return matchesSearch && matchesFilter;
+    });
+
+    // 3. Sortieren (unverändert)
+    const sortMode = publicSortSelect ? publicSortSelect.value : 'newest';
+    filteredDecks.sort((a, b) => {
+        switch (sortMode) {
+            case 'name': return a.title.localeCompare(b.title);
+            case 'oldest': return (a.publishedAt || '').localeCompare(b.publishedAt || '');
+            case 'cards': return (b.cardCount || 0) - (a.cardCount || 0);
+            case 'newest': default: return (b.publishedAt || '').localeCompare(a.publishedAt || '');
+        }
+    });
+
+    // 4. Empty State
+    if (filteredDecks.length === 0) {
+        publicDeckListContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 col-span-full text-center py-8">Keine Decks gefunden.</p>';
+        return;
+    }
+
+    // 5. Rendern
+    filteredDecks.forEach(deck => {
+        const div = document.createElement('div');
+        const isMyDeck = currentUser && deck.originalAuthorId === currentUser.uid;
+
+        // VISUELLE TRENNUNG:
+        // Eigene Decks bekommen einen blauen Rand, fremde Decks einen grauen.
+        const borderClass = isMyDeck 
+            ? "border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900" 
+            : "border-gray-200 dark:border-gray-700";
+
+        div.className = `p-6 bg-white dark:bg-gray-800 rounded-lg shadow border ${borderClass} transition-all`;
+        
+        let actionBtnHtml = '';
+        
+        if (isMyDeck) {
+            actionBtnHtml = `
+                <button class="delete-public-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
+                    🗑 Löschen
+                </button>`;
+        } else {
+            actionBtnHtml = `
+                <div class="flex space-x-2">
+                    <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="Vorschau" data-id="${deck.id}">
+                        👁
+                    </button>
+                    <button class="import-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-1 rounded text-sm font-medium transition" title="Direkt Importieren" data-id="${deck.id}">
+                        ⬇ Import
+                    </button>
+                </div>`;
+        }
+
+        div.innerHTML = `
+            <div class="flex justify-between items-start">
+                <div>
+                    <h3 class="font-bold text-xl text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        ${deck.title}
+                        ${isMyDeck ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200">Du</span>' : ''}
+                    </h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">von ${deck.originalAuthor}</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} Karten</p>
+                </div>
+                ${actionBtnHtml}
+            </div>
+        `;
+
+        // Event Listener (wie gehabt)
+        if (isMyDeck) {
+            div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (confirm(`Möchtest du dein öffentliches Deck "${deck.title}" wirklich löschen?`)) {
+                    try {
+                        await storageService.deletePublicDeck(deck.id);
+                        alert("Deck vom Marktplatz entfernt.");
+                        // Hinweis: onSnapshot aktualisiert die Liste automatisch, aber wir müssen sicherstellen, 
+                        // dass sie nicht leer bleibt, falls das gelöschte Deck das einzige war.
+                    } catch (err) {
+                        console.error(err);
+                        alert("Fehler: " + err.message);
+                    }
+                }
+            });
+        } else {
+            div.querySelector('.preview-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openPreviewModal(deck);
+            });
+            div.querySelector('.import-btn').addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (confirm(`Möchtest du "${deck.title}" direkt importieren?`)) {
+                    try {
+                        await storageService.importDeck(deck.id);
+                        alert("Deck erfolgreich importiert!");
+                        switchTab('my-decks');
+                    } catch (err) {
+                        console.error(err);
+                        alert("Fehler beim Import: " + err.message);
+                    }
+                }
+            });
+        }
+        
+        publicDeckListContainer.appendChild(div);
+    });
+}
