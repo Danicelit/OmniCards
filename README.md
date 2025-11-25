@@ -14,10 +14,10 @@ Here is the current development plan, sorted by priority.
 
 ### 🚨 Phase 1: Stability & Critical Bugfixes
 - [x] **Bugfix:** Empty card back during study session (rendering issue).
-- [ ] **Bugfix:** Imported cards display "undefined" (data structure compatibility).
+- [x] **Bugfix:** Imported cards display "undefined" (data structure compatibility).
 - [x] **Bugfix:** Card carrying over from different deck.
 - [x] **Bugfix:** Remove duplicate "Add new card" UI element.
-- [ ] **Bugfix:** Header title ("OmniCards") does not reset when returning to the dashboard.
+- [x] **Bugfix:** Header title ("OmniCards") does not reset when returning to the dashboard.
 - [x] **Bugfix:** Card count in dashboard always shows "0".
 - [x] **Bugfix:** User avatar is not consistently displayed after login.
 
