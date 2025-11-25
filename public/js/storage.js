@@ -319,6 +319,30 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             });
 
             await Promise.all(batchPromises);
+        },
+        // 10. Deck und alle seine Karten löschen
+        deleteDeckFull: async (deckId) => {
+            const user = auth.currentUser;
+            if (!user || !deckId) throw new Error("Nicht eingeloggt oder keine Deck-ID");
+
+            // 1. Alle Karten holen
+            const cardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
+            const cardsSnap = await getDocs(cardsRef);
+
+            // 2. Batch erstellen (für effizientes Löschen)
+            // Hinweis: Firestore Batches können max 500 Operationen haben. 
+            // Für den Anfang reicht ein einfacher Loop mit Promises, das ist einfacher zu lesen.
+            const deletePromises = [];
+            cardsSnap.forEach((doc) => {
+                deletePromises.push(deleteDoc(doc.ref));
+            });
+            await Promise.all(deletePromises);
+
+            // 3. Das Deck selbst löschen
+            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
+            await deleteDoc(deckRef);
+
+            // Optional: Hier könnte man später Logik einbauen, um auch public copies zu finden/löschen (Req #8)
         }
     };
 }

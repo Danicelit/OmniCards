@@ -33,6 +33,7 @@ const deckListContainer = document.getElementById('deck-list-container');
 const createDeckBtn = document.getElementById('create-deck-btn'); // <--- HIER FEHLTE ER
 const backToDashboardBtn = document.getElementById('back-to-dashboard-btn');
 const deckCountEl = document.getElementById('deck-count');
+const deleteDeckBtn = document.getElementById('delete-deck-btn');
 
 // Tabs
 const tabMyDecks = document.getElementById('tab-my-decks');
@@ -222,6 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 8. Sync (Optional)
     if(syncLocalToCloudBtn) syncLocalToCloudBtn.addEventListener('click', handleSyncLocalToCloud);
+
+    if (deleteDeckBtn) deleteDeckBtn.addEventListener('click', handleDeleteDeck);
 });
 
 
@@ -334,6 +337,26 @@ function resetStudyState() {
     
     // Reset buttons using existing helper
     resetCardState();
+}
+
+async function handleDeleteDeck() {
+    if (!currentDeckId) return;
+
+    // Sicherheitsabfrage
+    const confirmDelete = confirm("Bist du sicher, dass du dieses Deck und ALLE seine Karten unwiderruflich löschen möchtest?");
+    if (!confirmDelete) return;
+
+    // Zweite Sicherheitsabfrage (weil Löschen endgültig ist)
+    // const reallySure = confirm("Wirklich? Es gibt kein Zurück!"); // Optional, wenn du willst
+
+    try {
+        await storageService.deleteDeckFull(currentDeckId);
+        alert("Deck erfolgreich gelöscht.");
+        showDashboard(); // Zurück zur Übersicht
+    } catch (error) {
+        console.error(error);
+        alert("Fehler beim Löschen: " + error.message);
+    }
 }
 
 // --- Create Deck Logic ---
