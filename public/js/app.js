@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, userIdEl, firebaseErrorContainer, unsubscribeRef);
 
-    storageService.init(); 
+    storageService.init();
 
     // 2. General Event Listeners
     if (backToDashboardBtn) backToDashboardBtn.addEventListener('click', showDashboard);

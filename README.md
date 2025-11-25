@@ -18,7 +18,7 @@ Here is the current development plan, sorted by priority.
 - [x] **Bugfix:** Card carrying over from different deck.
 - [x] **Bugfix:** Remove duplicate "Add new card" UI element.
 - [ ] **Bugfix:** Header title ("OmniCards") does not reset when returning to the dashboard.
-- [ ] **Bugfix:** Card count in dashboard always shows "0".
+- [x] **Bugfix:** Card count in dashboard always shows "0".
 - [ ] **Bugfix:** User avatar is not consistently displayed after login.
 
 ### 🛠 Phase 2: Deck Management & Core Features

@@ -15,7 +15,8 @@ import {
     collection, 
     query, 
     getDocs,
-    getDoc
+    getDoc,
+    increment
 } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
 import { db, auth, appId } from './config.js';
@@ -153,11 +154,19 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
         },
 
         // 4. Karte hinzufügen
+        // 4. Add card (and increment count)
         addCardToDeck: async (deckId, card) => {
             const user = auth.currentUser;
             if (!user || !deckId) return;
+            
+            // 1. Save card
             const cardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
             await addDoc(cardsRef, card);
+
+            // 2. Increment deck counter
+            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
+            // We use setDoc with merge: true so we don't overwrite other deck data
+            await setDoc(deckRef, { cardCount: increment(1) }, { merge: true });
         },
 
         // 5. Karte aktualisieren
@@ -172,8 +181,14 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
         deleteCard: async (deckId, cardId) => {
             const user = auth.currentUser;
             if (!user || !deckId) return;
+            
+            // 1. Delete card
             const cardRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards/${cardId}`);
             await deleteDoc(cardRef);
+
+            // 2. Decrement deck counter
+            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
+            await setDoc(deckRef, { cardCount: increment(-1) }, { merge: true });
         },
 
         // 7. Deck VERÖFFENTLICHEN (Kopie von Privat -> Public)
