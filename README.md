@@ -19,7 +19,7 @@ Here is the current development plan, sorted by priority.
 - [x] **Bugfix:** Remove duplicate "Add new card" UI element.
 - [ ] **Bugfix:** Header title ("OmniCards") does not reset when returning to the dashboard.
 - [x] **Bugfix:** Card count in dashboard always shows "0".
-- [ ] **Bugfix:** User avatar is not consistently displayed after login.
+- [x] **Bugfix:** User avatar is not consistently displayed after login.
 
 ### 🛠 Phase 2: Deck Management & Core Features
 - [ ] **Feature:** Delete decks (with security confirmation & sync to marketplace).

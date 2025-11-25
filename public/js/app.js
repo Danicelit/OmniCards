@@ -46,6 +46,7 @@ const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const userDisplayName = document.getElementById('user-display-name');
 const userAvatar = document.getElementById('user-avatar');
+const userAvatarPlaceholder = document.getElementById('user-avatar-placeholder');
 
 // Study Elements
 const addCardForm = document.getElementById('add-card-form');
@@ -125,10 +126,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     userDisplayName.textContent = user.displayName || user.email;
                     userDisplayName.classList.remove('hidden');
                 }
-                if (user.photoURL && userAvatar) {
-                    userAvatar.src = user.photoURL;
-                    userAvatar.classList.remove('hidden');
+                
+                // AVATAR LOGIK VERBESSERT
+                if (user.photoURL) {
+                    // Fall 1: Google Bild vorhanden
+                    if(userAvatar) {
+                        userAvatar.src = user.photoURL;
+                        userAvatar.classList.remove('hidden');
+                    }
+                    if(userAvatarPlaceholder) userAvatarPlaceholder.classList.add('hidden');
+                } else {
+                    // Fall 2: Kein Bild -> Zeige Initialen
+                    if(userAvatar) userAvatar.classList.add('hidden');
+                    if(userAvatarPlaceholder) {
+                        const name = user.displayName || user.email || "?";
+                        userAvatarPlaceholder.textContent = name.charAt(0).toUpperCase();
+                        userAvatarPlaceholder.classList.remove('hidden');
+                    }
                 }
+                
                 if(loginBtn) loginBtn.classList.add('hidden');
                 if(logoutBtn) logoutBtn.classList.remove('hidden');
             }
@@ -140,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(userDisplayName) userDisplayName.classList.add('hidden');
             if(logoutBtn) logoutBtn.classList.add('hidden');
             if(userAvatar) userAvatar.classList.add('hidden');
+            if(userAvatarPlaceholder) userAvatarPlaceholder.classList.add('hidden');
             
             deckListContainer.innerHTML = '<p class="text-center p-8 text-gray-500">Bitte logge dich ein.</p>';
         }
