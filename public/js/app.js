@@ -23,6 +23,9 @@ let currentDeckType = 'standard';
 
 let currentUser = null; // Speichert das User-Objekt
 
+let currentDeckSort = 'lastLearned'; // Standard: Zuletzt gelernt
+let cachedDecks = [];
+
 // --- DOM Elements ---
 const appContainer = document.getElementById('app-container');
 const firebaseErrorContainer = document.getElementById('firebase-error-container');
@@ -37,6 +40,7 @@ const backToDashboardBtn = document.getElementById('back-to-dashboard-btn');
 const deckCountEl = document.getElementById('deck-count');
 const deleteDeckBtn = document.getElementById('delete-deck-btn');
 const renameDeckBtn = document.getElementById('rename-deck-btn');
+const deckSortSelect = document.getElementById('deck-sort-select');
 
 // Tabs
 const tabMyDecks = document.getElementById('tab-my-decks');
@@ -231,6 +235,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (deleteDeckBtn) deleteDeckBtn.addEventListener('click', handleDeleteDeck);
 
     if (renameDeckBtn) renameDeckBtn.addEventListener('click', handleRenameDeck);
+
+    // Sort Decks Listener
+    if (deckSortSelect) {
+        deckSortSelect.addEventListener('change', (e) => {
+            currentDeckSort = e.target.value;
+            // Wir müssen die Liste neu rendern. 
+            // Da wir die Decks nicht global gespeichert haben (nur im Closure von subscribeDecks),
+            // ist der einfachste Weg: Den Listener neu triggern oder die Decks global speichern.
+            
+            // Bessere Lösung: Wir speichern die Decks kurz global zwischen oder triggern reload.
+            // Da 'showDashboard' den Listener neu aufbaut, rufen wir das einfach auf (etwas brachial aber sicher).
+            // ODER ELEGANT: Wir speichern 'cachedDecks' global.
+            
+            // Lass uns 'cachedDecks' einführen (siehe Schritt F)
+            renderDeckList(cachedDecks); 
+        });
+    }
 });
 
 
@@ -651,6 +672,8 @@ function showDashboard() {
 
 function showStudyView(deckId, deckTitle, deckType = 'standard') {
     resetStudyState();
+
+    storageService.updateDeck(deckId, { lastLearnedAt: new Date().toISOString() }).catch(err => console.error("Could not update lastLearnedAt", err));
     
     dashboardView.classList.add('hidden');
     studyView.classList.remove('hidden');
@@ -667,8 +690,32 @@ function showStudyView(deckId, deckTitle, deckType = 'standard') {
 }
 
 function renderDeckList(decks) {
+    cachedDecks = decks;
     deckListContainer.innerHTML = '';
-    decks.forEach(deck => {
+
+    const sortedDecks = [...decks].sort((a, b) => {
+        switch (currentDeckSort) {
+            case 'name':
+                return a.title.localeCompare(b.title);
+            case 'countDesc':
+                return (b.cardCount || 0) - (a.cardCount || 0);
+            case 'countAsc':
+                return (a.cardCount || 0) - (b.cardCount || 0);
+            case 'newest':
+                return (b.createdAt || '').localeCompare(a.createdAt || '');
+            case 'lastLearned':
+            default:
+                // Fallback: Wenn noch nie gelernt, behandeln wir es als ganz alt ('')
+                const dateA = a.lastLearnedAt || '';
+                const dateB = b.lastLearnedAt || '';
+                // Absteigend sortieren (neuestes Datum zuerst)
+                // Wenn Datum gleich ist, fallback auf Name
+                if (dateB === dateA) return a.title.localeCompare(b.title);
+                return dateB.localeCompare(dateA);
+        }
+    });
+
+    sortedDecks.forEach(deck => {
         const div = document.createElement('div');
         div.className = "p-6 bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
         
