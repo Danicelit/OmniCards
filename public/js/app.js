@@ -359,8 +359,33 @@ function handleDataUpdate(cards) {
     allCards = cards;
     renderCardList();
     if(deckCountEl) deckCountEl.textContent = allCards.length;
-    buildReviewQueue();
-    if (!currentCard) { 
+
+    // 1. Warteschlange bereinigen: Entferne Karten, die nicht mehr in allCards existieren (weil gelöscht)
+    if (reviewQueue.length > 0) {
+        reviewQueue = reviewQueue.filter(qCard => allCards.find(c => c.id === qCard.id));
+    }
+
+    // 2. Prüfen: Wurde die AKTUELLE Karte gelöscht?
+    if (currentCard) {
+        const stillExists = allCards.find(c => c.id === currentCard.id);
+        
+        if (!stillExists) {
+            // Karte wurde unter dem Hintern weggelöscht -> Sofort weiter
+            console.log("Aktuelle Karte wurde gelöscht, springe weiter...");
+            showNextCard();
+        } else {
+            // Karte existiert noch -> Update die Daten im Speicher (falls Edit passiert ist)
+            currentCard = stillExists;
+            // Optional: Man könnte hier re-rendern, falls sich der Text geändert hat.
+            // Das sparen wir uns aber, damit die Karte sich nicht unerwartet umdreht.
+        }
+    }
+
+    // 3. Starten (Initial oder wenn Queue leer lief durch Löschen)
+    if (!currentCard) {
+        if (reviewQueue.length === 0 && allCards.length > 0) {
+            buildReviewQueue(); // Neu mischen, falls leer
+        }
         showNextCard();
     }
 }

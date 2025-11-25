@@ -16,7 +16,7 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [x] **Bugfix:** Dashboard tab navigation style does not update correctly (Blue underline remains on "My Decks").
 - [x] **Bugfix:** Restore sorting indicators (arrows) in the deck card table.
 - [ ] **Bugfix:** "Delete Public Deck" permission error (Rules adjustment needed).
-- [ ] **Bugfix:** Deleting the currently active card causes "undefined" ghost card in the study session.
+- [x] **Bugfix:** Deleting the currently active card causes "undefined" ghost card in the study session.
 - [ ] **Logic:** Trigger immediate queue rebuild/card refresh when changing "Study Mode" (Front/Back/Random).
 - [ ] **Logic:** Make the "Edit Card" modal dynamic (currently hardcoded to Chinese fields, breaks for Math decks).
 
