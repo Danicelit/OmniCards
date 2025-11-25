@@ -104,10 +104,7 @@ const editCardModal = document.getElementById('edit-card-modal');
 const editModalContent = editCardModal ? editCardModal.querySelector('.modal-content') : null;
 const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
 const editCardForm = document.getElementById('edit-card-form');
-const editFrontInput = document.getElementById('edit-front');
-const editBackInput = document.getElementById('edit-back');
-const editExtraInput = document.getElementById('edit-extra');
-const convertEditPinyinBtn = document.getElementById('convert-edit-pinyin-btn');
+const editDynamicFieldsContainer = document.getElementById('edit-dynamic-fields-container');
 
 const queueModal = document.getElementById('queue-modal');
 const queueModalContent = document.getElementById('queue-modal-content');
@@ -215,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Wir nutzen Event Delegation oder direkte Listener beim Erstellen, 
     // aber diese hier sind für statische Felder (falls noch vorhanden)
     if(inputExtra) inputExtra.addEventListener('keyup', handlePinyinKeyup);
-    if(editExtraInput) editExtraInput.addEventListener('keyup', handlePinyinKeyup);
     
     // 3. Create Deck Listeners (NEU)
     if (createDeckBtn) createDeckBtn.addEventListener('click', openCreateDeckModal);
@@ -236,7 +232,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if(editCardModal) editCardModal.addEventListener('click', (e) => {
         if (e.target === editCardModal) closeEditModal();
     });
-    if(convertEditPinyinBtn) convertEditPinyinBtn.addEventListener('click', handleEditPinyinConvert);
 
     // 5. Queue Modal
     if(closeQueueModalBtn) closeQueueModalBtn.addEventListener('click', closeQueueModal);
@@ -397,7 +392,7 @@ function handleDataUpdate(cards) {
     }
 }
 
-function buildFormFields(templateKey, containerElement) {
+function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
     const template = CardTemplates[templateKey] || CardTemplates['standard'];
     containerElement.innerHTML = ''; 
 
@@ -406,9 +401,10 @@ function buildFormFields(templateKey, containerElement) {
         wrapper.className = "flex flex-col";
 
         const label = document.createElement('label');
-        // FIX: dark:text-gray-300
         label.className = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
         label.textContent = field.label;
+        // Label 'for' Attribut muss zur ID passen
+        label.setAttribute('for', `${idPrefix}${field.id}`); 
         wrapper.appendChild(label);
 
         const inputGroup = document.createElement('div');
@@ -417,12 +413,12 @@ function buildFormFields(templateKey, containerElement) {
         const input = document.createElement('input');
         input.type = field.type || 'text';
         input.name = field.id; 
-        input.id = `input-${field.id}`;
+        // WICHTIG: Hier nutzen wir den Prefix (z.B. 'edit-front')
+        input.id = `${idPrefix}${field.id}`;
         input.placeholder = field.placeholder || '';
-        // FIX: Dark Mode Klassen für Input
         input.className = "w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 " + (field.hasAction ? "rounded-l-lg" : "rounded-lg");
 
-        if (field.id === 'pinyin') {
+        if (field.id === 'pinyin' || field.id === 'extra') {
              input.addEventListener('keyup', handlePinyinKeyup);
         }
 
@@ -432,7 +428,6 @@ function buildFormFields(templateKey, containerElement) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.textContent = field.actionLabel;
-            // FIX: Dark Mode Klassen für Button
             btn.className = "px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-300 dark:hover:bg-gray-500 text-sm";
             btn.onclick = () => field.actionHandler(input);
             inputGroup.appendChild(btn);
@@ -673,12 +668,34 @@ async function handleCardListActions(e) {
     if (e.target.classList.contains('edit-btn')) {
         const cardId = e.target.dataset.id;
         const cardToEdit = allCards.find(c => c.id === cardId);
+        
         if (cardToEdit) {
             currentEditCardId = cardId;
-            // Simple mapping fallback
-            editFrontInput.value = cardToEdit.front || '';
-            editBackInput.value = cardToEdit.back || '';
-            editExtraInput.value = cardToEdit.extra || '';
+            
+            // 1. Formular aufbauen (passend zum aktuellen Deck-Typ!)
+            // Wir nutzen den Prefix 'edit-' damit die IDs eindeutig sind
+            buildFormFields(currentDeckType, editDynamicFieldsContainer, 'edit-');
+            
+            // 2. Werte einfüllen
+            // Wir gehen durch die Felder des Templates und suchen die passenden Inputs
+            const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
+            
+            template.fields.forEach(field => {
+                const input = document.getElementById(`edit-${field.id}`);
+                if (input) {
+                    // Wert aus der Karte holen (z.B. cardToEdit.front)
+                    // Fallback auf leeren String
+                    input.value = cardToEdit[field.id] || '';
+                    
+                    // Legacy Fallback (falls Karte noch alt ist und wir 'german' statt 'front' haben)
+                    if (!input.value) {
+                        if (field.id === 'front') input.value = cardToEdit.german || '';
+                        if (field.id === 'back') input.value = cardToEdit.chinese || '';
+                        if (field.id === 'extra') input.value = cardToEdit.pinyin || '';
+                    }
+                }
+            });
+
             openEditModal();
         }
     }
@@ -688,11 +705,16 @@ async function handleUpdateCard(e) {
     e.preventDefault();
     if (!currentEditCardId || !currentDeckId) return;
 
-    const updatedData = {
-        front: editFrontInput.value.trim(),
-        back: editBackInput.value.trim(),
-        extra: editExtraInput.value.trim(),
-    };
+    // 1. Daten dynamisch aus dem Formular holen
+    const formData = new FormData(editCardForm);
+    const updatedData = {};
+
+    for (let [key, value] of formData.entries()) {
+        updatedData[key] = value.trim();
+    }
+
+    // Validierung (optional: prüfen ob Pflichtfelder da sind)
+    // ...
 
     try {
         await storageService.updateCard(currentDeckId, currentEditCardId, updatedData);
@@ -700,6 +722,7 @@ async function handleUpdateCard(e) {
         closeEditModal();
     } catch (error) {
         console.error(error);
+        alert("Fehler beim Aktualisieren: " + error.message);
     }
 }
 
@@ -735,12 +758,6 @@ function handlePinyinConvert() {
     let pinyinText = inputExtra.value;
     if (!pinyinText) return;
     inputExtra.value = convertPinyinTones(pinyinText);
-}
-
-function handleEditPinyinConvert() {
-    let pinyinText = editExtraInput.value;
-    if (!pinyinText) return;
-    editExtraInput.value = convertPinyinTones(pinyinText);
 }
 
 function handlePinyinKeyup(e) {

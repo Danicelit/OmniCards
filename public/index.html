@@ -305,27 +305,11 @@
                 </button>
             </div>
             
-            <form id="edit-card-form" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label for="edit-front" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vorderseite (Frage)</label>
-                    <input type="text" id="edit-front" name="front" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500" placeholder="z.B. Haus oder $$ \int x dx $$">
-                </div>
-                <div>
-                    <label for="edit-back" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rückseite (Antwort)</label>
-                    <input type="text" id="edit-back" name="back" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500" placeholder="Antwort...">
-                </div>
-                
-                <div id="edit-extra-field-container">
-                    <label for="edit-extra" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zusatz (z.B. Pinyin)</label>
-                    <div class="flex">
-                        <input type="text" id="edit-extra" name="extra" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-l-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500" placeholder="Optional">
-                        <button type="button" id="convert-edit-pinyin-btn" class="px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm">
-                            Wandeln
-                        </button>
-                    </div>
+            <form id="edit-card-form" class="space-y-4">
+                <div id="edit-dynamic-fields-container" class="grid grid-cols-1 gap-4">
                 </div>
 
-                <div class="md:col-span-3">
+                <div class="md:col-span-3 pt-4">
                     <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow">
                         Änderungen speichern
                     </button>
