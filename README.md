@@ -22,7 +22,7 @@ Here is the current development plan, sorted by priority.
 - [x] **Bugfix:** User avatar is not consistently displayed after login.
 
 ### 🛠 Phase 2: Deck Management & Core Features
-- [ ] **Feature:** Delete decks (with security confirmation & sync to marketplace).
+- [x] **Feature:** Delete decks (with security confirmation & sync to marketplace).
 - [ ] **Feature:** Rename decks.
 - [ ] **Feature:** Extended dashboard sorting (Last opened, Name, Card count).
 - [ ] **Feature:** Pin "Last opened deck" to the top.

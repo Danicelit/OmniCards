@@ -16,7 +16,8 @@ import {
     query, 
     getDocs,
     getDoc,
-    increment
+    increment,
+    where
 } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
 import { db, auth, appId } from './config.js';
@@ -25,6 +26,7 @@ const LOCAL_STORAGE_KEY = 'omniCardsData';
 
 // --- Local Storage Service ---
 export function createLocalStorageService(handleDataUpdate, userIdEl) {
+    
     // (Bleibt unverändert für lokale Funktion)
     return {
         init: () => {
@@ -55,7 +57,20 @@ export function createLocalStorageService(handleDataUpdate, userIdEl) {
 // --- Firebase Service ---
 // WICHTIG: Erster Parameter ist jetzt onAuthChange (Callback für User-Status)
 export function createFirebaseService(onAuthChange, userIdEl, errorContainer, unsubscribeRef) {
-    
+    // Interne Funktion zum Löschen eines öffentlichen Decks
+    const _deletePublicDeckInternal = async (publicDeckId, userId) => {
+        // 1. Karten löschen
+        const cardsRef = collection(db, `/artifacts/${appId}/public_decks/${publicDeckId}/cards`);
+        const cardsSnap = await getDocs(cardsRef);
+        const deletePromises = [];
+        cardsSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
+        await Promise.all(deletePromises);
+
+        // 2. Deck löschen
+        const deckRef = doc(db, `/artifacts/${appId}/public_decks/${publicDeckId}`);
+        await deleteDoc(deckRef);
+    };
+
     return {
         init: async () => {
             try {
@@ -220,6 +235,7 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             // deckData übergeben wir direkt aus der App, um einen Lesezugriff zu sparen
             const user = auth.currentUser;
             if (!user) throw new Error("Nicht eingeloggt");
+            
 
             // 1. Das Deck im 'public_decks' Ordner erstellen
             const publicDecksRef = collection(db, `/artifacts/${appId}/public_decks`);
@@ -228,6 +244,7 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
                 type: deckData.type || 'standard',
                 originalAuthor: user.displayName || "Anonym",
                 originalAuthorId: user.uid,
+                originalDeckId: deckId, // <--- NEU: Verknüpfung zum Original
                 publishedAt: new Date().toISOString(),
                 cardCount: deckData.cardCount || 0
             });
@@ -323,26 +340,54 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
         // 10. Deck und alle seine Karten löschen
         deleteDeckFull: async (deckId) => {
             const user = auth.currentUser;
-            if (!user || !deckId) throw new Error("Nicht eingeloggt oder keine Deck-ID");
+            if (!user || !deckId) throw new Error("Nicht eingeloggt");
 
-            // 1. Alle Karten holen
+            // --- 1. Privates Deck löschen (wie bisher) ---
             const cardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
             const cardsSnap = await getDocs(cardsRef);
-
-            // 2. Batch erstellen (für effizientes Löschen)
-            // Hinweis: Firestore Batches können max 500 Operationen haben. 
-            // Für den Anfang reicht ein einfacher Loop mit Promises, das ist einfacher zu lesen.
             const deletePromises = [];
-            cardsSnap.forEach((doc) => {
-                deletePromises.push(deleteDoc(doc.ref));
-            });
+            cardsSnap.forEach((doc) => deletePromises.push(deleteDoc(doc.ref)));
             await Promise.all(deletePromises);
 
-            // 3. Das Deck selbst löschen
             const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
             await deleteDoc(deckRef);
 
-            // Optional: Hier könnte man später Logik einbauen, um auch public copies zu finden/löschen (Req #8)
-        }
+            // --- 2. NEU: Öffentliche Kopien suchen & löschen ---
+            try {
+                const publicDecksRef = collection(db, `/artifacts/${appId}/public_decks`);
+                // Suche alle Decks, die von MIR sind UND von DIESEM Deck abstammen
+                const q = query(publicDecksRef, 
+                    where("originalAuthorId", "==", user.uid),
+                    where("originalDeckId", "==", deckId)
+                );
+                const publicSnap = await getDocs(q);
+                
+                const publicDeletePromises = [];
+                publicSnap.forEach((doc) => {
+                    console.log("Lösche öffentliche Kopie:", doc.id);
+                    publicDeletePromises.push(_deletePublicDeckInternal(doc.id, user.uid));
+                });
+                await Promise.all(publicDeletePromises);
+            } catch (err) {
+                console.error("Fehler beim Löschen der öffentlichen Kopien:", err);
+                // Wir werfen hier keinen Fehler, damit das private Löschen als "erfolgreich" gilt
+            }
+        },
+        // 11. Öffentliches Deck manuell löschen
+        deletePublicDeck: async (publicDeckId) => {
+            const user = auth.currentUser;
+            if (!user) throw new Error("Nicht eingeloggt");
+            
+            // Sicherheitscheck: Gehört das Deck mir?
+            const deckRef = doc(db, `/artifacts/${appId}/public_decks/${publicDeckId}`);
+            const deckSnap = await getDoc(deckRef);
+            
+            if (!deckSnap.exists()) throw new Error("Deck nicht gefunden");
+            if (deckSnap.data().originalAuthorId !== user.uid) {
+                throw new Error("Du kannst nur deine eigenen Decks löschen.");
+            }
+
+            await _deletePublicDeckInternal(publicDeckId, user.uid);
+        },
     };
 }
