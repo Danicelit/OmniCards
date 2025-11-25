@@ -303,6 +303,22 @@ async function handleAddCard(e) {
     }
 }
 
+// Clears all study-related state to prevent "ghost cards" from appearing in other decks
+function resetStudyState() {
+    currentCard = null;
+    reviewQueue = [];
+    currentDeckId = null;
+    currentDeckType = 'standard';
+    
+    // Clear UI
+    if(cardFrontText) cardFrontText.innerHTML = '';
+    if(cardBackContent) cardBackContent.innerHTML = '';
+    if(studyMessage) studyMessage.textContent = '';
+    
+    // Reset buttons using existing helper
+    resetCardState();
+}
+
 // --- Create Deck Logic ---
 function openCreateDeckModal() {
     templateSelect.innerHTML = '';
@@ -543,14 +559,29 @@ async function handleSyncLocalToCloud() {
 function showDashboard() {
     dashboardView.classList.remove('hidden');
     studyView.classList.add('hidden');
-    currentDeckId = null;
-    if (unsubscribeCards) unsubscribeCards();
+    
+    // Reset Header Title
+    document.querySelector('h1').textContent = 'OmniCards';
+
+    // --- Clean up old study session data ---
+    resetStudyState(); 
+    // --------------------------------------------
+    
+    // Stop Card Listener
+    if (unsubscribeCards) {
+        unsubscribeCards();
+        unsubscribeCards = null;
+    }
+    
+    // Start Deck Listener (if not running)
     if (!unsubscribeDecks && storageService.subscribeDecks) {
         unsubscribeDecks = storageService.subscribeDecks(renderDeckList);
     }
 }
 
 function showStudyView(deckId, deckTitle, deckType = 'standard') {
+    resetStudyState();
+    
     dashboardView.classList.add('hidden');
     studyView.classList.remove('hidden');
     currentDeckId = deckId;
