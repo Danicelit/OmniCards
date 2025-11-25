@@ -862,22 +862,44 @@ function renderDeckList(decks) {
 }
 
 function switchTab(tab) {
+    // Definition der Klassen für aktiven und inaktiven Zustand (inkl. Dark Mode)
+    const activeClasses = [
+        'text-blue-600', 'dark:text-blue-400', 
+        'font-bold', 
+        'border-b-2', 'border-blue-600', 'dark:border-blue-400'
+    ];
+    
+    const inactiveClasses = [
+        'text-gray-500', 'hover:text-gray-700', 
+        'dark:text-gray-400', 'dark:hover:text-gray-200'
+    ];
+
     if (tab === 'my-decks') {
-        tabMyDecks.classList.add('border-blue-600', 'text-blue-600', 'font-bold');
-        tabMyDecks.classList.remove('text-gray-500');
-        tabCommunity.classList.remove('border-blue-600', 'text-blue-600', 'font-bold');
-        tabCommunity.classList.add('text-gray-500');
+        // 1. Meine Decks -> AKTIV
+        tabMyDecks.classList.add(...activeClasses);
+        tabMyDecks.classList.remove(...inactiveClasses);
+
+        // 2. Community -> INAKTIV
+        tabCommunity.classList.remove(...activeClasses);
+        tabCommunity.classList.add(...inactiveClasses);
         
+        // 3. Views umschalten
         myDecksSection.classList.remove('hidden');
         communitySection.classList.add('hidden');
     } else {
-        tabCommunity.classList.add('border-blue-600', 'text-blue-600', 'font-bold');
-        tabCommunity.classList.remove('text-gray-500');
-        tabMyDecks.classList.remove('border-blue-600', 'text-blue-600', 'font-bold');
-        tabMyDecks.classList.add('text-gray-500');
+        // 1. Community -> AKTIV
+        tabCommunity.classList.add(...activeClasses);
+        tabCommunity.classList.remove(...inactiveClasses);
 
+        // 2. Meine Decks -> INAKTIV
+        tabMyDecks.classList.remove(...activeClasses);
+        tabMyDecks.classList.add(...inactiveClasses);
+
+        // 3. Views umschalten
         myDecksSection.classList.add('hidden');
         communitySection.classList.remove('hidden');
+        
+        // Daten laden
         loadPublicDecks();
     }
 }
