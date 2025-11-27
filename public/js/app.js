@@ -388,37 +388,67 @@ function handleDataUpdate(cards) {
     renderCardList();
     if(deckCountEl) deckCountEl.textContent = allCards.length;
 
-    // Queue cleanen ... (bleibt gleich) ...
+    // 1. Warteschlange bereinigen (Gelöschte entfernen, Geänderte updaten)
     if (reviewQueue.length > 0) {
         reviewQueue = reviewQueue
             .map(qCard => allCards.find(c => c.id === qCard.id))
             .filter(c => c !== undefined);
     }
 
-    // Prüfen ob aktuelle Karte gelöscht ... (bleibt gleich) ...
+    // --- NEU: Neue Karten injizieren (Regel 1) ---
+    const currentId = currentCard ? currentCard.id : null;
+    // Wir prüfen: Ist diese Karte IRGENDWO schon in der Queue?
+    const queueIds = new Set(reviewQueue.map(c => c.id));
+    
+    const newCards = allCards.filter(c => 
+        c.id !== currentId &&       // Nicht die Karte, die wir gerade sehen
+        !queueIds.has(c.id) &&      // Gar nicht in der Queue vorhanden
+        c.srsLevel === 0            // Nur Level 0 Karten
+    );
+
+    if (newCards.length > 0) {
+        // Jede neue Karte 9x hinzufügen
+        newCards.forEach(c => {
+            for(let i=0; i<9; i++) {
+                reviewQueue.push(c);
+            }
+        });
+        
+        // Regel 1: Queue geshuffled
+        shuffleArray(reviewQueue);
+        
+        // UI Update
+        if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
+        
+        // Optional: Kleiner Hinweis (da Toast deaktiviert ist, lassen wir es still passieren)
+        console.log(`${newCards.length} neue Karten (x9) hinzugefügt und gemischt.`);
+    }
+    // -----------------------------------
+
+    // 2. Prüfen: Wurde die AKTUELLE Karte gelöscht?
     if (currentCard) {
         const updatedCard = allCards.find(c => c.id === currentCard.id);
+        
         if (!updatedCard) {
+            console.log("Aktuelle Karte wurde gelöscht, springe weiter...");
             showNextCard();
         } else {
             currentCard = updatedCard;
         }
     }
 
-    // FIX: Initialer Start oder Leeres Deck
-    // Wenn keine Karte aktiv ist, schauen wir nach.
-    if (!currentCard) {
-        // Fall A: Deck hat Karten, aber Queue leer -> Mischen & Starten
-        if (allCards.length > 0 && reviewQueue.length === 0) {
-            buildReviewQueue();
-            showNextCard();
-        } 
-        // Fall B: Deck ist leer -> Sofort showNextCard (damit der Empty-State angezeigt wird)
-        else if (allCards.length === 0) {
-            showNextCard();
+    // 3. Starten (Initial oder wenn Queue leer war)
+    // Fall: Wir hatten "Alle Karten gelernt", aber jetzt wurde eine neue hinzugefügt -> Neustart!
+    const isSessionDone = !currentCard && (reviewQueue.length > 0 || (allCards.length > 0 && reviewQueue.length === 0));
+    
+    if (isSessionDone) {
+        // Wenn wir im "Done" Screen waren, aber jetzt wieder Karten da sind (z.B. durch Hinzufügen)
+        // dann schauen wir, ob wir weitermachen können.
+        if (reviewQueue.length === 0) {
+             buildReviewQueue();
         }
-        // Fall C: Queue hat Karten -> Starten
-        else if (reviewQueue.length > 0) {
+        // Nur weitermachen, wenn die Queue jetzt wirklich voll ist
+        if (reviewQueue.length > 0) {
             showNextCard();
         }
     }
@@ -483,7 +513,6 @@ async function handleAddCard(e) {
     if(template.fields && template.fields.length > 0) {
         const firstFieldId = template.fields[0].id;
         if (!newCard[firstFieldId]) {
-            studyMessage.textContent = "Bitte das erste Feld ausfüllen.";
             return;
         }
         
@@ -501,10 +530,8 @@ async function handleAddCard(e) {
     try {
         await storageService.addCardToDeck(currentDeckId, newCard);
         addCardForm.reset();
-        studyMessage.textContent = "Karte hinzugefügt.";
     } catch (error) { 
         console.error(error);
-        studyMessage.textContent = "Fehler beim Speichern.";
     }
 }
 
@@ -610,7 +637,6 @@ function showNextCard() {
         `;
         cardBackContent.innerHTML = ''; 
         showButton.style.display = 'none';
-        studyMessage.textContent = ""; 
         currentCard = null;
         return;
     }
@@ -627,11 +653,9 @@ function showNextCard() {
         `;
         cardBackContent.innerHTML = ''; 
         showButton.style.display = 'none';
-        // NEU: Nachricht übersetzen
-        studyMessage.textContent = t('msg.sessionDone');
         currentCard = null;
         
-        buildReviewQueue(); 
+        // buildReviewQueue(); 
         return;
     }
 
@@ -667,26 +691,33 @@ function showNextCard() {
 function buildReviewQueue() {
     reviewQueue = [];
     
+    if (!allCards || allCards.length === 0) return;
+
     allCards.forEach(card => {
-        let weight = 0;
-        switch (card.srsLevel) {
-            case 0: weight = 9; break; 
-            case 1: weight = 6; break; 
-            case 2: weight = 3; break; 
-            case 3: weight = 1; break;
-            case 4: weight = (Math.random() < 0.33) ? 1 : 0; break; 
-            default: weight = 1;
+        let count = 0;
+        // Regel 2: Gewichtung nach Level
+        // (Wichtig: Wir nehmen srsLevel || 0, falls undefined)
+        const level = (typeof card.srsLevel === 'number') ? card.srsLevel : 0;
+
+        switch (level) {
+            case 0: count = 9; break; 
+            case 1: count = 6; break; 
+            case 2: count = 3; break; 
+            case 3: count = 1; break;
+            case 4: count = (Math.random() < 0.33) ? 1 : 0; break; 
+            default: count = 1; // Fallback für höhere Level (oder 0, wenn du willst)
         }
-        for (let i = 0; i < weight; i++) {
+
+        // Karten vervielfältigen und hinzufügen
+        for (let i = 0; i < count; i++) {
             reviewQueue.push(card);
         }
     });
 
-    if (reviewQueue.length === 0 && allCards.length > 0) {
-        allCards.forEach(card => reviewQueue.push(card));
-    }
-
+    // Mischen (Regel 3)
     shuffleArray(reviewQueue);
+    
+    // UI Update
     if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
 }
 
@@ -695,7 +726,6 @@ async function handleCardListActions(e) {
         const cardId = e.target.dataset.id;
         try {
             await storageService.deleteCard(currentDeckId, cardId);
-            studyMessage.textContent = "Karte gelöscht.";
         } catch (error) {
             console.error(error);
         }
@@ -754,7 +784,6 @@ async function handleUpdateCard(e) {
 
     try {
         await storageService.updateCard(currentDeckId, currentEditCardId, updatedData);
-        studyMessage.textContent = "Karte aktualisiert.";
         closeEditModal();
     } catch (error) {
         console.error(error);
@@ -765,42 +794,66 @@ async function handleUpdateCard(e) {
 async function handleFeedback(wasCorrect) {
     if (!currentCard || !currentDeckId) return;
 
-    // 1. Werte sicher auslesen (mit Fallback auf 0, falls undefined/null)
-    // Das verhindert den "NaN" Fehler bei alten Karten.
     let srsLevel = (typeof currentCard.srsLevel === 'number') ? currentCard.srsLevel : 0;
     let consecutiveCorrect = (typeof currentCard.consecutiveCorrect === 'number') ? currentCard.consecutiveCorrect : 0;
 
-    // 2. Neue Werte berechnen
     if (wasCorrect) {
+        // --- RICHTIG BEANTWORTET (Regel 4) ---
         consecutiveCorrect++;
-        
-        // Logik: Alle 3 richtigen Antworten in Folge steigt man ein Level auf
         if (consecutiveCorrect >= 3 && srsLevel < 4) {
             srsLevel++;
-            consecutiveCorrect = 0; // Streak Reset beim Aufstieg
+            consecutiveCorrect = 0; 
         }
+        
+        // WICHTIG: Wir machen NICHTS mit der Queue.
+        // Die aktuelle Karte wurde durch 'reviewQueue.shift()' in 'showNextCard' 
+        // bereits aus der Queue entfernt.
+        // Wenn noch 8 weitere Kopien drin sind, bleiben die drin.
+        // Die Queue wird NICHT gemischt.
+        
     } else {
-        // Bei Fehler: Streak weg und Level absteigen
+        // --- FALSCH BEANTWORTET (Regel 5) ---
         consecutiveCorrect = 0;
         if (srsLevel > 0) {
             srsLevel--;
         }
     }
 
-    // 3. Speichern
+    // Speichern in DB
     try {
         await storageService.updateCard(currentDeckId, currentCard.id, { 
             srsLevel: srsLevel, 
             consecutiveCorrect: consecutiveCorrect 
         });
     } catch (error) {
-        console.error("Fehler beim Speichern des Fortschritts:", error);
+        console.error("Fehler beim Speichern:", error);
     }
 
-    // 4. Weiter zur nächsten Karte (wenn Queue leer, neu mischen)
+    // Wenn FALSCH -> Queue komplett neu aufbauen (Regel 5)
+    // Hinweis: Wir machen das NACH dem Speichern, damit buildReviewQueue 
+    // die neuen (schlechteren) Level der Karte berücksichtigt.
+    if (!wasCorrect) {
+        // Da DB Update asynchron ist und wir lokal 'allCards' noch nicht geupdated haben 
+        // (passiert erst durch onSnapshot callback), müssen wir manuell patchen,
+        // sonst baut buildReviewQueue mit alten Daten.
+        
+        const localCardRef = allCards.find(c => c.id === currentCard.id);
+        if (localCardRef) {
+            localCardRef.srsLevel = srsLevel;
+            localCardRef.consecutiveCorrect = consecutiveCorrect;
+        }
+        
+        console.log("Fehler gemacht -> Queue Reset & Shuffle");
+        buildReviewQueue(); 
+    }
+
+    // Nächste Karte
     if (reviewQueue.length === 0) {
+        // Falls durch "Richtig" die letzte Karte weg ist
+        // ODER durch "Falsch" rebuild gemacht wurde (sollte eigentlich nicht leer sein, außer Deck ist leer)
         buildReviewQueue();
     }
+    
     showNextCard();
 }
 
@@ -1190,12 +1243,8 @@ function buildAndShowQueueModal() {
 }
 
 function handleRebuildQueue() {
-    studyMessage.textContent = "Mische...";
     buildReviewQueue();
-    showNextCard();     
-    setTimeout(() => {
-        studyMessage.textContent = reviewQueue.length > 0 ? "Bereit!" : "Keine Karten.";
-    }, 300);
+    showNextCard();
 }
 
 function initTheme() {
