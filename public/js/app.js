@@ -1,6 +1,7 @@
 import { createFirebaseService } from './storage.js';
 import { convertPinyinTones } from './utils.js';
 import { CardTemplates } from './templates.js';
+import { t, setLanguage } from './i18n.js';
 
 // --- Globale Variablen & State ---
 let currentDeckId = null;
@@ -78,7 +79,6 @@ const wrongButton = document.getElementById('wrong-button');
 const reviewCountEl = document.getElementById('review-count');
 const reviewCountContainer = document.getElementById('review-count-container');
 const rebuildQueueBtn = document.getElementById('rebuild-queue-btn');
-const studyMessage = document.getElementById('study-message');
 
 // Inputs (Reference kept for Pinyin helper, but mostly generated dynamically now)
 const inputFront = document.getElementById('input-front');
@@ -288,14 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Listener für Settings
     if (darkModeToggle) darkModeToggle.addEventListener('click', toggleDarkMode);
 
-    // (Sprache kommt später, aber Listener schon mal vorbereiten)
-    if (languageSelect) languageSelect.addEventListener('change', (e) => {
-        const lang = e.target.value;
-        localStorage.setItem('omniCardsLanguage', lang);
-        alert("Spracheinstellung gespeichert. Übersetzung folgt in Phase 3!");
-        // später: updateTexts(lang);
-    });
-
     // 3. Lern-Modus laden
     const savedMode = localStorage.getItem('omniCardsStudyMode');
     if (savedMode) {
@@ -339,6 +331,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (publicFilterSelect) {
         publicFilterSelect.addEventListener('change', () => renderPublicDeckList());
     }
+
+    // Sprache
+    if (languageSelect) {
+        // Aktuelle Sprache setzen (damit Dropdown stimmt)
+        languageSelect.value = localStorage.getItem('omniCardsLanguage') || 'de';
+        
+        languageSelect.addEventListener('change', (e) => {
+            const lang = e.target.value;
+            setLanguage(lang); // <--- NEU: Funktion aufrufen
+            // Optional: Seite neu laden, um auch JS-generierte Inhalte (Templates) sicher zu aktualisieren
+            // Das ist oft einfacher als alles dynamisch neu zu rendern.
+            window.location.reload(); 
+        });
+    }
 });
 
 
@@ -348,13 +354,12 @@ async function handleRenameDeck() {
     if (!currentDeckId) return;
     const oldTitle = document.querySelector('h1').textContent;
     
-    const newTitle = await uiShowPrompt("Deck umbenennen", "Neuer Name für das Deck:", oldTitle);
+    const newTitle = await uiShowPrompt(t('dialog.rename.title'), t('dialog.rename.msg'), oldTitle);
     
     if (newTitle && newTitle.trim() !== "" && newTitle !== oldTitle) {
         try {
             await storageService.updateDeck(currentDeckId, { title: newTitle.trim() });
             document.querySelector('h1').textContent = newTitle.trim();
-            // await uiShowAlert("Erfolg", "Deck umbenannt."); // Optional, vllt zu nervig
         } catch (error) {
             console.error(error);
             await uiShowAlert("Fehler", error.message);
@@ -368,38 +373,39 @@ function handleDataUpdate(cards) {
     renderCardList();
     if(deckCountEl) deckCountEl.textContent = allCards.length;
 
-    // 1. Warteschlange bereinigen & AKTUALISIEREN
+    // Queue cleanen ... (bleibt gleich) ...
     if (reviewQueue.length > 0) {
-        // Wir filtern nicht nur gelöschte, sondern wir holen uns auch die NEUEN DATEN
-        // für die Karten, die noch in der Queue sind.
         reviewQueue = reviewQueue
-            .map(qCard => allCards.find(c => c.id === qCard.id)) // Neue Daten holen
-            .filter(c => c !== undefined); // Gelöschte entfernen
+            .map(qCard => allCards.find(c => c.id === qCard.id))
+            .filter(c => c !== undefined);
     }
 
-    // 2. Prüfen: Wurde die AKTUELLE Karte gelöscht oder geändert?
+    // Prüfen ob aktuelle Karte gelöscht ... (bleibt gleich) ...
     if (currentCard) {
         const updatedCard = allCards.find(c => c.id === currentCard.id);
-        
         if (!updatedCard) {
-            // Karte wurde gelöscht -> Weiter
-            console.log("Aktuelle Karte wurde gelöscht, springe weiter...");
             showNextCard();
         } else {
-            // WICHTIG: Wir aktualisieren currentCard mit den neuen Werten aus der DB!
-            // Sonst arbeiten wir weiter mit alten Werten (z.B. altem SRS Level).
             currentCard = updatedCard;
         }
     }
 
-    // 3. Starten (Initial oder wenn Queue leer lief durch Löschen)
-    if (!currentCard && reviewQueue.length === 0 && allCards.length > 0) {
-        // Wenn wir nichts tun, und Queue leer ist, starten wir neu
-        buildReviewQueue(); 
-        showNextCard();
-    } else if (!currentCard && reviewQueue.length > 0) {
-        // Falls wir currentCard verloren haben aber Queue noch da ist
-        showNextCard();
+    // FIX: Initialer Start oder Leeres Deck
+    // Wenn keine Karte aktiv ist, schauen wir nach.
+    if (!currentCard) {
+        // Fall A: Deck hat Karten, aber Queue leer -> Mischen & Starten
+        if (allCards.length > 0 && reviewQueue.length === 0) {
+            buildReviewQueue();
+            showNextCard();
+        } 
+        // Fall B: Deck ist leer -> Sofort showNextCard (damit der Empty-State angezeigt wird)
+        else if (allCards.length === 0) {
+            showNextCard();
+        }
+        // Fall C: Queue hat Karten -> Starten
+        else if (reviewQueue.length > 0) {
+            showNextCard();
+        }
     }
 }
 
@@ -413,8 +419,7 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
 
         const label = document.createElement('label');
         label.className = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-        label.textContent = field.label;
-        // Label 'for' Attribut muss zur ID passen
+        label.textContent = t(field.label); // Übersetzung!
         label.setAttribute('for', `${idPrefix}${field.id}`); 
         wrapper.appendChild(label);
 
@@ -424,9 +429,8 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
         const input = document.createElement('input');
         input.type = field.type || 'text';
         input.name = field.id; 
-        // WICHTIG: Hier nutzen wir den Prefix (z.B. 'edit-front')
         input.id = `${idPrefix}${field.id}`;
-        input.placeholder = field.placeholder || '';
+        input.placeholder = t(field.placeholder); // Übersetzung!
         input.className = "w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 " + (field.hasAction ? "rounded-l-lg" : "rounded-lg");
 
         if (field.id === 'pinyin' || field.id === 'extra') {
@@ -438,7 +442,7 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
         if (field.hasAction) {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.textContent = field.actionLabel;
+            btn.textContent = t(field.actionLabel); // Übersetzung!
             btn.className = "px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-300 dark:hover:bg-gray-500 text-sm";
             btn.onclick = () => field.actionHandler(input);
             inputGroup.appendChild(btn);
@@ -498,7 +502,6 @@ function resetStudyState() {
     // Clear UI
     if(cardFrontText) cardFrontText.innerHTML = '';
     if(cardBackContent) cardBackContent.innerHTML = '';
-    if(studyMessage) studyMessage.textContent = '';
     
     // Reset buttons using existing helper
     resetCardState();
@@ -507,17 +510,13 @@ function resetStudyState() {
 async function handleDeleteDeck() {
     if (!currentDeckId) return;
 
-    const confirmed = await uiShowConfirm(
-        "Deck löschen?", 
-        "Möchtest du dieses Deck und ALLE Karten unwiderruflich löschen?", 
-        true // isDangerous -> Roter Button
-    );
+    const confirmed = await uiShowConfirm(t('dialog.delDeck.title'), t('dialog.delDeck.msg'), true);
     
     if (!confirmed) return;
 
     try {
         await storageService.deleteDeckFull(currentDeckId);
-        await uiShowAlert("Gelöscht", "Deck erfolgreich gelöscht."); // ERSETZT: alert
+        await uiShowAlert(t('common.geloescht'), t('msg.deckDeleted'));
         showDashboard();
     } catch (error) {
         console.error(error);
@@ -532,7 +531,7 @@ function openCreateDeckModal() {
     Object.entries(CardTemplates).forEach(([key, tpl]) => {
         const option = document.createElement('option');
         option.value = key;
-        option.textContent = tpl.name;
+        option.textContent = t(tpl.nameKey); // Übersetzung!
         templateSelect.appendChild(option);
     });
     
@@ -546,7 +545,7 @@ function openCreateDeckModal() {
 function updateTemplateDesc() {
     const key = templateSelect.value;
     if (CardTemplates[key]) {
-        templateDesc.textContent = CardTemplates[key].description;
+        templateDesc.textContent = t(CardTemplates[key].descKey); // Übersetzung!
     }
 }
 
@@ -556,7 +555,7 @@ async function handleCreateDeckSubmit(e) {
     const formData = new FormData(createDeckForm);
     const title = formData.get('deckName');
     if (!title) {
-        await uiShowAlert("Fehler", "Bitte einen Namen eingeben.");
+        await uiShowAlert(t('common.error'), t('error.enterName'));
         return;
     }
     const type = formData.get('template');
@@ -575,61 +574,50 @@ async function handleCreateDeckSubmit(e) {
 function showNextCard() {
     resetCardState(); 
     
-    // FALL 1: Das Deck ist komplett leer (noch keine Karten erstellt)
+    // FALL 1: Leeres Deck
     if (!allCards || allCards.length === 0) {
-        // Hübscher Platzhalter mit Icon
         cardFrontText.innerHTML = `
             <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                <span class="text-lg font-medium text-center">Füge Karteikarten hinzu,<br>um loszulegen.</span>
+                <span class="text-lg font-medium text-center">${t('msg.emptyDeck')}</span>
             </div>
         `;
         cardBackContent.innerHTML = ''; 
-        
-        // UI Elemente verstecken
         showButton.style.display = 'none';
-        studyMessage.textContent = ""; // WICHTIG: Keine "Gelernt"-Nachricht anzeigen
-        
+        studyMessage.textContent = ""; 
         currentCard = null;
         return;
     }
 
-    // FALL 2: Deck hat Karten, aber die aktuelle Lern-Runde ist vorbei (Queue leer)
+    // FALL 2: Runde fertig
     if (!reviewQueue || reviewQueue.length === 0) {
         cardFrontText.innerHTML = `
             <div class="flex flex-col items-center justify-center text-green-600 dark:text-green-400">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span class="text-2xl font-bold">Gut gemacht!</span>
+                <span class="text-2xl font-bold">${t('msg.goodJob')}</span>
             </div>
         `;
         cardBackContent.innerHTML = ''; 
         showButton.style.display = 'none';
-        studyMessage.textContent = "Alle Karten für diese Runde gelernt.";
+        // NEU: Nachricht übersetzen
+        studyMessage.textContent = t('msg.sessionDone');
         currentCard = null;
         
-        // Versuch, neue Karten nachzuladen (für die nächste Runde)
         buildReviewQueue(); 
         return;
     }
 
-    // FALL 3: Normale Karte anzeigen
+    // ... (Rest der Funktion bleibt gleich) ...
     currentCard = reviewQueue.shift(); 
-    if (!currentCard) { 
-        showNextCard(); 
-        return;
-    }
+    if (!currentCard) { showNextCard(); return; }
     
-    // --- Modus Logik (Bleibt wie vorher) ---
     let useReverse = false;
-    if (currentStudyMode === 'reverse') {
-        useReverse = true;
-    } else if (currentStudyMode === 'random') {
-        useReverse = Math.random() < 0.5; 
-    }
+    if (currentStudyMode === 'reverse') { useReverse = true; }
+    else if (currentStudyMode === 'random') { useReverse = Math.random() < 0.5; }
 
     const displayCard = { ...currentCard };
 
@@ -640,20 +628,15 @@ function showNextCard() {
         displayCard.back = realFront;
     }
     
-    // Template Render
     const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
-
     cardFrontText.innerHTML = template.renderFront(displayCard);
     renderMath(cardFrontText); 
-    
     cardBackContent.innerHTML = '';
     const newBackContent = template.renderBack(displayCard);
-    
     setTimeout(() => {
         cardBackContent.innerHTML = newBackContent;
         renderMath(cardBackContent); 
     }, 300);
-
     if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
 }
 
@@ -921,7 +904,7 @@ function renderDeckList(decks) {
         
         div.innerHTML = `
             <h3 class="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">${deck.title}</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">${deck.cardCount || 0} Karten</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">${deck.cardCount || 0} ${t('common.cards')}</p>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type}</p>
             
             <button class="share-btn absolute top-4 right-4 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 p-2 opacity-0 group-hover:opacity-100 transition" title="Veröffentlichen">
@@ -940,18 +923,15 @@ function renderDeckList(decks) {
         const shareBtn = div.querySelector('.share-btn');
         shareBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const confirmed = await uiShowConfirm(
-                "Veröffentlichen", 
-                `Möchtest du "${deck.title}" für alle Nutzer im Marktplatz sichtbar machen?`
-            );
+            const confirmed = await uiShowConfirm(t('dialog.publish.title'), t('dialog.publish.msg', {title: deck.title}));
 
             if (confirmed) {
                 try {
                     await storageService.publishDeckFull(deck.id, deck);
-                    await uiShowAlert("Erfolg", "Deck veröffentlicht!");
+                    await uiShowAlert(t('common.success'), t('msg.deckPublished'));
                 } catch (err) {
                     console.error(err);
-                    await uiShowAlert("Fehler", err.message);
+                    await uiShowAlert(t('common.error'), err.message);
                 }
             }
         });
@@ -1024,7 +1004,6 @@ function resetCardState() {
     cardInner.classList.remove('is-flipped');
     showButton.style.display = 'block';
     feedbackButtons.style.display = 'none';
-    studyMessage.textContent = "";
 }
 
 function shuffleArray(array) {
@@ -1086,7 +1065,7 @@ function renderCardList() {
     });
 
     if (sortedCards.length === 0) {
-        cardListBody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">Keine Karten.</td></tr>';
+        cardListBody.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">${t('table.noCards')}</td></tr>`; // Übersetzung!
         return;
     }
 
@@ -1111,8 +1090,8 @@ function renderCardList() {
                 <span class="text-xs text-gray-400 dark:text-gray-500 ml-1">(Streak: ${card.consecutiveCorrect || 0})</span>
             </td>
             <td class="px-4 py-3 text-sm">
-                <button data-id="${card.id}" class="edit-btn text-blue-600 hover:text-blue-800 font-medium mr-3">Edit</button>
-                <button data-id="${card.id}" class="delete-btn text-red-600 hover:text-red-800 font-medium">Löschen</button>
+                <button data-id="${card.id}" class="edit-btn text-blue-600 hover:text-blue-800 font-medium mr-3">${t('table.edit')}</button>
+                <button data-id="${card.id}" class="delete-btn text-red-600 hover:text-red-800 font-medium">${t('table.delete')}</button>
             </td>
         `;
         cardListBody.appendChild(tr);
@@ -1216,8 +1195,8 @@ async function openPreviewModal(deck) {
     
     // 1. UI Reset & Öffnen
     previewTitle.textContent = deck.title;
-    previewMeta.textContent = `Erstellt von ${deck.originalAuthor} • ${deck.type} • ${deck.cardCount} Karten`;
-    previewCardsList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 italic">Lade Beispiele...</p>';
+    previewMeta.textContent = `${t('comm.createdBy')} ${deck.originalAuthor} • ${deck.type} • ${deck.cardCount} ${t('common.cards')}`;
+    previewCardsList.innerHTML = `<p class="text-gray-500 dark:text-gray-400 italic">${t('comm.loading')}</p>`;
     
     previewModal.classList.remove('opacity-0', 'pointer-events-none');
     previewModal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
@@ -1236,7 +1215,7 @@ function renderPreviewCards(cards, deckType) {
     previewCardsList.innerHTML = '';
     
     if (cards.length === 0) {
-        previewCardsList.innerHTML = '<p class="text-gray-500">Dieses Deck ist leer.</p>';
+        previewCardsList.innerHTML = `<p class="text-gray-500">${t('comm.emptyDeck')}</p>`;
         return;
     }
 
@@ -1279,17 +1258,17 @@ async function handlePreviewImport() {
     
     // Button Loading State
     const originalText = previewImportBtn.textContent;
-    previewImportBtn.textContent = "Importiere...";
+    previewImportBtn.textContent = t('btn.importing');
     previewImportBtn.disabled = true;
 
     try {
         await storageService.importDeck(currentPreviewDeckId);
         closePreviewModal();
-        await uiShowAlert("Erfolg", "Deck erfolgreich importiert!"); // Hier ist Feedback gut
+        await uiShowAlert(t('common.success'), t('msg.deckImported')); // Hier ist Feedback gut
         switchTab('my-decks');
     } catch (err) {
         console.error(err);
-        await uiShowAlert("Fehler", err.message);
+        await uiShowAlert(t('common.error'), err.message);
     } finally {
         previewImportBtn.textContent = originalText;
         previewImportBtn.disabled = false;
@@ -1387,7 +1366,7 @@ function renderPublicDeckList() {
                         ${isMyDeck ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200">Du</span>' : ''}
                     </h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">von ${deck.originalAuthor}</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} Karten</p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} ${t('common.cards')}</p>
                 </div>
                 ${actionBtnHtml}
             </div>
@@ -1397,19 +1376,15 @@ function renderPublicDeckList() {
         if (isMyDeck) {
             div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const confirmed = await uiShowConfirm(
-                "Löschen", 
-                `Möchtest du dein öffentliches Deck "${deck.title}" wirklich löschen?`,
-                true // Dangerous
-            );
+                const confirmed = await uiShowConfirm(t('dialog.delPublic.title'), t('dialog.delPublic.msg', {title: deck.title}), true);
             
             if (confirmed) {
                 try {
                     await storageService.deletePublicDeck(deck.id);
-                    await uiShowAlert("Gelöscht", "Deck vom Marktplatz entfernt.");
+                    await uiShowAlert(t('common.success'), t('msg.deckDeleted'));
                 } catch (err) {
                         console.error(err);
-                        await uiShowAlert("Fehler", err.message);
+                        await uiShowAlert(t('common.error'), err.message);
                     }
                 }
             });
@@ -1420,19 +1395,15 @@ function renderPublicDeckList() {
             });
             div.querySelector('.import-btn').addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const confirmed = await uiShowConfirm(
-                "Importieren", 
-                `Möchtest du "${deck.title}" in deine Sammlung importieren?`
-            );
+                const confirmed = await uiShowConfirm(t('dialog.import.title'), t('dialog.import.msg', {title: deck.title}));
 
             if (confirmed) {
                 try {
                     await storageService.importDeck(deck.id);
-                    // await uiShowAlert("Erfolg", "Deck importiert!"); // Kann man auch weglassen für Flow
                     switchTab('my-decks');
                 } catch (err) {
                         console.error(err);
-                        await uiShowAlert("Fehler", err.message);
+                        await uiShowAlert(t('common.error'), err.message);
                     }
                 }
             });
@@ -1472,29 +1443,27 @@ function updateTableHeaders(deckType) {
 
     const template = CardTemplates[deckType] || CardTemplates['standard'];
     
-    // Standard Spalte: Index (#)
+    // NEU: Index Header übersetzen? Oder '#' lassen.
     let html = `<th class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>`;
 
-    // Dynamische Spalten aus dem Template
-    // Wir mappen die Felder auf unsere internen Sortier-Keys (front, back, extra)
     const sortKeys = ['front', 'back', 'extra'];
     
     template.fields.forEach((field, index) => {
-        const sortKey = sortKeys[index] || field.id; // Fallback falls mehr Felder
+        const sortKey = sortKeys[index] || field.id; 
         
         html += `
             <th data-sort="${sortKey}" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-white">
-                ${field.label} <span class="sort-indicator"></span>
+                ${t(field.label)} <span class="sort-indicator"></span>
             </th>
         `;
     });
 
-    // Standard Spalten: Level & Aktionen
+    // NEU: Level & Actions Header übersetzen
     html += `
         <th data-sort="level" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-white">
-            Level <span class="sort-indicator"></span>
+            ${t('table.level')} <span class="sort-indicator"></span>
         </th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Aktionen</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">${t('table.actions')}</th>
     `;
 
     cardTableHeaderRow.innerHTML = html;

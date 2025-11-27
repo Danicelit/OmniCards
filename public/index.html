@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -33,19 +34,19 @@
                 <img id="user-avatar" src="" alt="Avatar" referrerpolicy="no-referrer" class="w-8 h-8 rounded-full hidden border border-gray-300 dark:border-gray-600 object-cover">
                 <div id="user-avatar-placeholder" class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-200 flex items-center justify-center text-xs font-bold hidden border border-blue-200 dark:border-blue-800">
                 </div>
-
-                <button id="login-btn" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm">
-                    Login mit Google
-                </button>
-                <button id="logout-btn" class="hidden text-red-500 hover:text-red-400 text-sm hover:underline">
-                    Logout
-                </button>
-
+                
                 <button id="open-settings-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 transition" title="Einstellungen">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
+                </button>
+
+                <button id="login-btn" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm" data-i18n="auth.login">
+                    Login mit Google
+                </button>
+                <button id="logout-btn" class="hidden text-red-500 hover:text-red-400 text-sm hover:underline" data-i18n="auth.logout">
+                    Logout
                 </button>
             </div>
         </div>
@@ -55,10 +56,10 @@
 
         <div id="dashboard-view" class="space-y-6">
             <div class="flex space-x-4 border-b border-gray-200 dark:border-gray-700 pb-2">
-                <button id="tab-my-decks" class="px-4 py-2 text-blue-600 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400 focus:outline-none">
+                <button id="tab-my-decks" class="px-4 py-2 text-blue-600 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400 focus:outline-none" data-i18n="nav.myDecks">
                     Meine Decks
                 </button>
-                <button id="tab-community" class="px-4 py-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none">
+                <button id="tab-community" class="px-4 py-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none" data-i18n="nav.community">
                     Community / Marktplatz
                 </button>
             </div>
@@ -66,18 +67,18 @@
             <div id="my-decks-section">
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                     <div class="flex items-center gap-4 w-full sm:w-auto">
-                        <p class="text-gray-600 dark:text-gray-400 whitespace-nowrap">Lerne deine eigenen Karten.</p>
+                        <p class="text-gray-600 dark:text-gray-400 whitespace-nowrap" data-i18n="dash.desc">Lerne deine eigenen Karten.</p>
                         
                         <select id="deck-sort-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
-                            <option value="lastLearned">Zuletzt gelernt</option>
-                            <option value="name">Name (A-Z)</option>
-                            <option value="countDesc">Meiste Karten</option>
-                            <option value="countAsc">Wenigste Karten</option>
-                            <option value="newest">Neueste zuerst</option>
+                            <option value="lastLearned" data-i18n="sort.lastLearned">Zuletzt gelernt</option>
+                            <option value="name" data-i18n="sort.name">Name (A-Z)</option>
+                            <option value="countDesc" data-i18n="sort.countDesc">Meiste Karten</option>
+                            <option value="countAsc" data-i18n="sort.countAsc">Wenigste Karten</option>
+                            <option value="newest" data-i18n="sort.newest">Neueste zuerst</option>
                         </select>
                     </div>
 
-                    <button id="create-deck-btn" class="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm">
+                    <button id="create-deck-btn" class="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm" data-i18n="dash.newDeck">
                         + Neues Deck
                     </button>
                 </div>
@@ -88,7 +89,7 @@
 
             <div id="community-section" class="hidden">
                 <div class="flex flex-col gap-4 mb-6">
-                    <p class="text-gray-600 dark:text-gray-400">Entdecke Decks von anderen Nutzern und importiere sie.</p>
+                    <p class="text-gray-600 dark:text-gray-400" data-i18n="comm.desc">Entdecke Decks von anderen Nutzern und importiere sie.</p>
                     
                     <div class="flex flex-col sm:flex-row gap-3">
                         <div class="relative flex-grow">
@@ -97,26 +98,26 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </div>
-                            <input type="text" id="public-search-input" class="pl-10 w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Suche nach Titel, Thema oder Autor...">
+                            <input type="text" id="public-search-input" class="pl-10 w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Suche..." data-i18n-placeholder="comm.searchPlaceholder">
                         </div>
 
                         <select id="public-filter-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm cursor-pointer w-full sm:w-auto">
-                            <option value="all">Alle Decks</option>
-                            <option value="mine">Meine Uploads</option>
-                            <option value="others">Von Anderen</option>
+                            <option value="all" data-i18n="filter.all">Alle Decks</option>
+                            <option value="mine" data-i18n="filter.mine">Meine Uploads</option>
+                            <option value="others" data-i18n="filter.others">Von Anderen</option>
                         </select>
 
                         <select id="public-sort-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm cursor-pointer sm:w-auto w-full">
-                            <option value="newest">Neueste zuerst</option>
-                            <option value="oldest">Älteste zuerst</option>
-                            <option value="name">Name (A-Z)</option>
-                            <option value="cards">Meiste Karten</option>
+                            <option value="newest" data-i18n="sort.newest">Neueste zuerst</option>
+                            <option value="oldest" data-i18n="sort.oldest">Älteste zuerst</option>
+                            <option value="name" data-i18n="sort.name">Name (A-Z)</option>
+                            <option value="cards" data-i18n="sort.countDesc">Meiste Karten</option>
                         </select>
                     </div>
                 </div>
 
                 <div id="public-deck-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg text-center text-gray-500 dark:text-gray-400">
+                    <div class="p-6 bg-gray-50 dark:bg-gray-800 rounded-lg text-center text-gray-500 dark:text-gray-400" data-i18n="comm.loading">
                         Lade Community Decks...
                     </div>
                 </div>
@@ -126,7 +127,7 @@
         <div id="study-view" class="hidden">
             
             <div class="flex justify-between items-center mb-6">
-                <button id="back-to-dashboard-btn" class="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center transition">
+                <button id="back-to-dashboard-btn" class="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center transition" data-i18n="study.back">
                     ← Zurück zur Übersicht
                 </button>
                 
@@ -135,48 +136,46 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
-                        Umbenennen
+                        <span data-i18n="btn.rename">Umbenennen</span>
                     </button>
 
                     <button id="delete-deck-btn" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-gray-700 px-3 py-1 rounded text-sm border border-red-200 dark:border-red-900 transition flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
-                        Löschen
+                        <span data-i18n="btn.delete">Löschen</span>
                     </button>
                 </div>
             </div>
 
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200 border-b dark:border-gray-700 pb-2">Neue Karte hinzufügen</h2>
+                <h2 class="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200 border-b dark:border-gray-700 pb-2" data-i18n="study.addCard">Neue Karte hinzufügen</h2>
 
                 <form id="add-card-form" class="space-y-4">
                     <div id="dynamic-fields-container" class="grid grid-cols-1 gap-4">
                         </div>
                     <div class="pt-2">
-                        <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow">
+                        <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow" data-i18n="study.btnAdd">
                             Karte hinzufügen
                         </button>
                     </div>
                 </form>
-
-                <div id="study-message" class="mt-4 text-center font-medium text-blue-600 dark:text-blue-400 min-h-[1.5rem]"></div>
             </div>
 
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 relative">
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
                     <div class="flex items-center gap-3 w-full sm:w-auto">
-                        <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Lernen</h2>
+                        <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200" data-i18n="study.learn">Lernen</h2>
                         
                         <select id="study-mode-select" class="py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 cursor-pointer shadow-sm">
-                            <option value="standard">Standard (A → B)</option>
-                            <option value="reverse">Umgekehrt (B → A)</option>
-                            <option value="random">Zufällig (Mix)</option>
+                            <option value="standard" data-i18n="mode.standard">Standard (A → B)</option>
+                            <option value="reverse" data-i18n="mode.reverse">Umgekehrt (B → A)</option>
+                            <option value="random" data-i18n="mode.random">Zufällig (Mix)</option>
                         </select>
                     </div>
 
                     <div id="review-count-container" class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 text-sm font-medium px-3 py-1 rounded-full cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800 transition flex-shrink-0" title="Klicken, um Warteschlange zu sehen">
-                        Warteschlange: <span id="review-count">0</span>
+                        <span data-i18n="study.queue">Warteschlange</span>: <span id="review-count">0</span>
                     </div>
                 </div>
 
@@ -187,8 +186,7 @@
                             <div id="card-front-text" class="text-4xl font-bold text-gray-800 dark:text-gray-100 p-4">
                                 Lade...
                             </div>
-                            <p class="text-xs text-gray-400 mt-4">(Klicken zum Umdrehen)</p>
-                        </div>
+                            </div>
 
                         <div class="card-back absolute w-full h-full flex items-center justify-center flex-col bg-blue-50 dark:bg-slate-800 rounded-xl border-2 border-blue-100 dark:border-slate-700">
                             <div id="card-back-content" class="text-gray-800 dark:text-gray-100">
@@ -198,22 +196,22 @@
                 </div>
 
                 <div class="flex justify-center mt-6 h-12">
-                    <button id="show-button" class="bg-indigo-600 text-white px-8 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md w-full sm:w-auto">
+                    <button id="show-button" class="bg-indigo-600 text-white px-8 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md w-full sm:w-auto" data-i18n="study.showAnswer">
                         Lösung anzeigen
                     </button>
                     
                     <div id="feedback-buttons" class="hidden space-x-4 w-full sm:w-auto justify-center">
-                        <button id="wrong-button" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition shadow flex-1 sm:flex-none">
+                        <button id="wrong-button" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition shadow flex-1 sm:flex-none" data-i18n="study.wrong">
                             Falsch / Nicht gewusst
                         </button>
-                        <button id="right-button" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition shadow flex-1 sm:flex-none">
+                        <button id="right-button" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition shadow flex-1 sm:flex-none" data-i18n="study.right">
                             Richtig / Gewusst
                         </button>
                     </div>
                 </div>
                 
                 <div class="mt-4 text-center">
-                    <button id="rebuild-queue-btn" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline">
+                    <button id="rebuild-queue-btn" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline" data-i18n="study.reset">
                         Stapel neu mischen (Reset)
                     </button>
                 </div>
@@ -221,7 +219,7 @@
 
             <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                 <div class="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-2">
-                    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Alle meine Karten (<span id="deck-count">0</span>)</h2>
+                    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200"><span data-i18n="study.allCards">Alle meine Karten</span> (<span id="deck-count">0</span>)</h2>
                 </div>
                 
                 <div class="overflow-x-auto">
@@ -242,7 +240,7 @@
     <div id="settings-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
         <div class="modal-content bg-white dark:bg-gray-800 w-full max-w-md p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0 transition-colors duration-300">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">Einstellungen</h2>
+                <h2 class="text-2xl font-semibold text-gray-800 dark:text-white" data-i18n="modal.settings">Einstellungen</h2>
                 <button id="close-settings-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -253,8 +251,8 @@
             <div class="space-y-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <label for="dark-mode-toggle" class="font-medium text-gray-700 dark:text-gray-200 block">Dunkelmodus</label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Augenschonendes Design.</p>
+                        <label for="dark-mode-toggle" class="font-medium text-gray-700 dark:text-gray-200 block" data-i18n="modal.darkmode">Dunkelmodus</label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" data-i18n="modal.darkmode.desc">Augenschonendes Design.</p>
                     </div>
                     <button id="dark-mode-toggle" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 dark:bg-blue-600 transition-colors focus:outline-none">
                         <span class="sr-only">Dark Mode aktivieren</span>
@@ -264,8 +262,8 @@
 
                 <div class="flex items-center justify-between">
                     <div>
-                        <label class="font-medium text-gray-700 dark:text-gray-200 block">Sprache / Language</label>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Wähle die App-Sprache.</p>
+                        <label class="font-medium text-gray-700 dark:text-gray-200 block" data-i18n="modal.lang">Sprache / Language</label>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" data-i18n="modal.lang.desc">Wähle die App-Sprache.</p>
                     </div>
                     <select id="language-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 dark:text-white text-sm focus:ring-blue-500">
                         <option value="de">Deutsch</option>
@@ -275,7 +273,7 @@
             </div>
 
             <div class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center text-xs text-gray-400">
-                OmniCards v1.0 • <a href="#" class="hover:underline">Impressum</a>
+                OmniCards v1.0
             </div>
         </div>
     </div>
@@ -283,7 +281,7 @@
     <div id="edit-card-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
         <div class="modal-content bg-white dark:bg-gray-800 w-full max-w-lg p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">Karte bearbeiten</h2>
+                <h2 class="text-2xl font-semibold text-gray-800 dark:text-white" data-i18n="modal.editCard">Karte bearbeiten</h2>
                 <button id="close-edit-modal-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -296,7 +294,7 @@
                 </div>
 
                 <div class="md:col-span-3 pt-4">
-                    <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow">
+                    <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow" data-i18n="modal.saveChanges">
                         Änderungen speichern
                     </button>
                 </div>
@@ -307,7 +305,7 @@
     <div id="queue-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
         <div id="queue-modal-content" class="modal-content bg-white dark:bg-gray-800 w-full max-w-md p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0 text-gray-800 dark:text-gray-100">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-semibold">Aktuelle Warteschlange</h2>
+                <h2 class="text-2xl font-semibold" data-i18n="modal.queue">Aktuelle Warteschlange</h2>
                 <button id="close-queue-modal-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -322,21 +320,21 @@
 
     <div id="create-deck-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
         <div class="modal-content bg-white dark:bg-gray-800 w-full max-w-md p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">Neues Deck erstellen</h2>
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white" data-i18n="modal.createDeck">Neues Deck erstellen</h2>
             <form id="create-deck-form" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name des Decks</label>
-                    <input type="text" name="deckName" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500" placeholder="z.B. Mathe 1">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" data-i18n="modal.deckName">Name des Decks</label>
+                    <input type="text" name="deckName" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vorlage wählen</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" data-i18n="modal.template">Vorlage wählen</label>
                     <select id="template-select" name="template" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                         </select>
                     <p id="template-desc" class="text-xs text-gray-500 dark:text-gray-400 mt-1"></p>
                 </div>
                 <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" id="cancel-create-deck" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Abbrechen</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Erstellen</button>
+                    <button type="button" id="cancel-create-deck" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" data-i18n="modal.cancel">Abbrechen</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" data-i18n="modal.create">Erstellen</button>
                 </div>
             </form>
         </div>
@@ -344,10 +342,9 @@
 
     <div id="preview-deck-modal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none">
         <div class="modal-content bg-white dark:bg-gray-800 w-full max-w-2xl p-6 rounded-lg shadow-xl m-4 transform scale-95 opacity-0 transition-all duration-300 max-h-[90vh] flex flex-col">
-            
             <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h2 id="preview-title" class="text-2xl font-bold text-gray-800 dark:text-white">Lade...</h2>
+                    <h2 id="preview-title" class="text-2xl font-bold text-gray-800 dark:text-white">...</h2>
                     <p id="preview-meta" class="text-sm text-gray-500 dark:text-gray-400 mt-1">...</p>
                 </div>
                 <button id="close-preview-btn" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
@@ -358,17 +355,16 @@
             </div>
             
             <div class="flex-1 overflow-y-auto border-t border-b border-gray-200 dark:border-gray-700 my-4 py-4">
-                <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Beispiel-Karten (Vorschau)</h3>
-                <div id="preview-cards-list" class="space-y-3">
-                    </div>
+                <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3" data-i18n="modal.preview.title">Beispiel-Karten</h3>
+                <div id="preview-cards-list" class="space-y-3"></div>
             </div>
 
             <div class="flex justify-end gap-3 pt-2">
-                <button id="preview-cancel-btn" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
+                <button id="preview-cancel-btn" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition" data-i18n="modal.cancel">
                     Abbrechen
                 </button>
-                <button id="preview-import-btn" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow-md font-medium">
-                    ⬇ Dieses Deck importieren
+                <button id="preview-import-btn" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow-md font-medium" data-i18n="modal.preview.import">
+                    ⬇ Importieren
                 </button>
             </div>
         </div>
@@ -376,18 +372,15 @@
 
     <div id="global-dialog-modal" class="modal fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 opacity-0 pointer-events-none transition-opacity duration-200">
         <div class="modal-content bg-white dark:bg-gray-800 w-full max-w-sm p-6 rounded-lg shadow-2xl m-4 transform scale-95 transition-all duration-200">
-            
             <h3 id="dialog-title" class="text-lg font-bold text-gray-900 dark:text-white mb-2">Hinweis</h3>
+            <p id="dialog-message" class="text-gray-600 dark:text-gray-300 mb-4"></p>
             
-            <p id="dialog-message" class="text-gray-600 dark:text-gray-300 mb-4">
-                </p>
-
             <div id="dialog-input-container" class="hidden mb-4">
                 <input type="text" id="dialog-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" autocomplete="off">
             </div>
 
             <div class="flex justify-end space-x-2">
-                <button id="dialog-cancel-btn" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition">
+                <button id="dialog-cancel-btn" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition" data-i18n="modal.cancel">
                     Abbrechen
                 </button>
                 <button id="dialog-confirm-btn" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow-sm font-medium">
@@ -396,6 +389,8 @@
             </div>
         </div>
     </div>
+
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
     <script type="module" src="js/app.js"></script>
 </body>
