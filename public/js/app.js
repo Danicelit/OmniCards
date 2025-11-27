@@ -927,15 +927,23 @@ function renderDeckList(decks) {
         div.className = "p-6 pr-14 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
         
         div.innerHTML = `
-            <h3 class="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100 break-words hyphens-auto">${deck.title}</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">${deck.cardCount || 0} ${t('common.cards')}</p>
-            <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type}</p>
-            
-            <button class="share-btn absolute top-4 right-4 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 p-2 opacity-0 group-hover:opacity-100 transition" title="Veröffentlichen">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-            </button>
+            <div class="relative">
+                <h3 class="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100 break-words hyphens-auto pr-10">
+                    ${deck.title}
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    ${deck.cardCount || 0} ${t('common.cards')}
+                </p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">
+                    ${deck.type}
+                </p>
+                
+                <button class="share-btn absolute top-0 right-0 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 p-1 opacity-0 group-hover:opacity-100 transition" title="${t('btn.share')}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                </button>
+            </div>
         `;
         
         div.addEventListener('click', (e) => {
@@ -1408,16 +1416,24 @@ function renderPublicDeckList() {
         }
 
         div.innerHTML = `
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="font-bold text-xl text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <div class="flex justify-between items-start gap-4">
+                
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-bold text-xl text-gray-800 dark:text-gray-100 flex items-center gap-2 break-all hyphens-auto">
                         ${deck.title}
-                        ${isMyDeck ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200">Du</span>' : ''}
+                        ${isMyDeck ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200 flex-shrink-0">Du</span>' : ''}
                     </h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${t('comm.createdBy')} ${deck.originalAuthor}</p>
-                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} ${t('common.cards')}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate">
+                        ${t('comm.createdBy')} ${deck.originalAuthor}
+                    </p>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">
+                        ${deck.type} • ${deck.cardCount} ${t('common.cards')}
+                    </p>
                 </div>
-                ${actionBtnHtml}
+
+                <div class="flex-shrink-0">
+                    ${actionBtnHtml}
+                </div>
             </div>
         `;
 
