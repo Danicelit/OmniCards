@@ -24,6 +24,7 @@ const translations = {
         "comm.emptyDeck": "Dieses Deck ist leer.",
         "comm.createdBy": "Erstellt von",
         "comm.loadingExamples": "Lade Beispiele...",
+        "comm.moreExamples": "... und weitere Karten.",
         
         // Deck Cards & Actions
         "btn.preview": "Vorschau",
@@ -177,6 +178,7 @@ const translations = {
         "comm.emptyDeck": "This deck is empty.",
         "comm.createdBy": "Created by",
         "comm.loadingExamples": "Loading examples...",
+        "comm.moreExamples": "... and more cards.",
         
         // Deck Cards & Actions
         "btn.preview": "Preview",

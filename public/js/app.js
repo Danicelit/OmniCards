@@ -384,73 +384,67 @@ async function handleRenameDeck() {
 
 // Abstracted Data Update Function
 function handleDataUpdate(cards) {
+    // 1. Änderung erkennen
+    const previousCount = allCards.length;
+    
+    // 2. Daten aktualisieren
     allCards = cards;
     renderCardList();
     if(deckCountEl) deckCountEl.textContent = allCards.length;
 
-    // 1. Warteschlange bereinigen (Gelöschte entfernen, Geänderte updaten)
+    // 3. CHECK: Wurde gelöscht? (Weniger Karten als vorher, aber vorher war nicht leer)
+    if (allCards.length < previousCount && previousCount > 0) {
+        buildReviewQueue(); // Queue komplett neu bauen
+        showNextCard();     // Sofort anzeigen
+        return;             // Rest der Funktion überspringen (Injection nicht nötig)
+    }
+
+    // --- Ab hier normale Logik für Hinzufügen/Updates ---
+
+    // 4. Queue bereinigen (Updates übernehmen)
     if (reviewQueue.length > 0) {
         reviewQueue = reviewQueue
             .map(qCard => allCards.find(c => c.id === qCard.id))
             .filter(c => c !== undefined);
     }
 
-    // --- NEU: Neue Karten injizieren (Regel 1) ---
+    // 5. Neue Karten injizieren (Nur Level 0, die noch nicht drin sind)
     const currentId = currentCard ? currentCard.id : null;
-    // Wir prüfen: Ist diese Karte IRGENDWO schon in der Queue?
     const queueIds = new Set(reviewQueue.map(c => c.id));
     
     const newCards = allCards.filter(c => 
-        c.id !== currentId &&       // Nicht die Karte, die wir gerade sehen
-        !queueIds.has(c.id) &&      // Gar nicht in der Queue vorhanden
-        c.srsLevel === 0            // Nur Level 0 Karten
+        c.id !== currentId &&       
+        !queueIds.has(c.id) &&      
+        c.srsLevel === 0            
     );
 
     if (newCards.length > 0) {
-        // Jede neue Karte 9x hinzufügen
         newCards.forEach(c => {
-            for(let i=0; i<9; i++) {
-                reviewQueue.push(c);
-            }
+            for(let i=0; i<9; i++) reviewQueue.push(c);
         });
-        
-        // Regel 1: Queue geshuffled
         shuffleArray(reviewQueue);
-        
-        // UI Update
         if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
-        
-        // Optional: Kleiner Hinweis (da Toast deaktiviert ist, lassen wir es still passieren)
-        console.log(`${newCards.length} neue Karten (x9) hinzugefügt und gemischt.`);
     }
-    // -----------------------------------
 
-    // 2. Prüfen: Wurde die AKTUELLE Karte gelöscht?
+    // 6. Aktuelle Karte prüfen
     if (currentCard) {
         const updatedCard = allCards.find(c => c.id === currentCard.id);
-        
         if (!updatedCard) {
-            console.log("Aktuelle Karte wurde gelöscht, springe weiter...");
             showNextCard();
         } else {
             currentCard = updatedCard;
         }
     }
 
-    // 3. Starten (Initial oder wenn Queue leer war)
-    // Fall: Wir hatten "Alle Karten gelernt", aber jetzt wurde eine neue hinzugefügt -> Neustart!
+    // 7. Initialer Start / Leeres Deck Handling
     const isSessionDone = !currentCard && (reviewQueue.length > 0 || (allCards.length > 0 && reviewQueue.length === 0));
     
     if (isSessionDone) {
-        // Wenn wir im "Done" Screen waren, aber jetzt wieder Karten da sind (z.B. durch Hinzufügen)
-        // dann schauen wir, ob wir weitermachen können.
-        if (reviewQueue.length === 0) {
-             buildReviewQueue();
-        }
-        // Nur weitermachen, wenn die Queue jetzt wirklich voll ist
-        if (reviewQueue.length > 0) {
-            showNextCard();
-        }
+        if (reviewQueue.length === 0) buildReviewQueue();
+        if (reviewQueue.length > 0) showNextCard();
+    } else if (!currentCard && allCards.length === 0) {
+        // Deck komplett leer -> Empty State anzeigen
+        showNextCard();
     }
 }
 
@@ -560,12 +554,12 @@ function resetStudyState() {
     reviewQueue = [];
     currentDeckId = null;
     currentDeckType = 'standard';
+    allCards = []; // <--- NEU: Globalen Cache leeren
     
     // Clear UI
     if(cardFrontText) cardFrontText.innerHTML = '';
     if(cardBackContent) cardBackContent.innerHTML = '';
     
-    // Reset buttons using existing helper
     resetCardState();
 }
 
@@ -874,8 +868,7 @@ async function handleFeedback(wasCorrect) {
             localCardRef.srsLevel = srsLevel;
             localCardRef.consecutiveCorrect = consecutiveCorrect;
         }
-        
-        console.log("Fehler gemacht -> Queue Reset & Shuffle");
+
         buildReviewQueue(); 
     }
 
@@ -1266,7 +1259,9 @@ function buildAndShowQueueModal() {
     } else {
         queueListContainer.innerHTML = reviewQueue.map((card, index) => `
             <div class="p-2 border-b dark:border-gray-700 flex justify-between">
-                <span class="text-gray-800 dark:text-gray-200">${index + 1}. ${card.front || card.german}</span>
+                <span class="text-gray-800 dark:text-gray-200 truncate flex-1 ml-2" title="${card.front || card.german}">
+                    ${index + 1}. ${card.front || card.german}
+                </span>
                 <span class="text-xs bg-gray-100 dark:bg-gray-700 dark:text-gray-300 px-2 rounded">Lvl: ${card.srsLevel}</span>
             </div>
         `).join('');
@@ -1374,7 +1369,7 @@ function renderPreviewCards(cards, deckType) {
     // Info, dass es nur ein Auszug ist
     const info = document.createElement('p');
     info.className = "text-xs text-center text-gray-400 mt-2";
-    info.textContent = "... und weitere Karten.";
+    info.textContent = `${t('comm.moreExamples')}`;
     previewCardsList.appendChild(info);
 }
 
@@ -1473,11 +1468,14 @@ function renderPublicDeckList() {
         let actionBtnHtml = '';
         
         if (isMyDeck) {
-            // Fall 1: Mein Deck -> Vorschau UND Löschen
+            // Fall 1: Mein Deck -> Vorschau, Löschen UND Importieren (NEU)
             actionBtnHtml = `
                 <div class="flex space-x-2">
                     <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.preview')}" data-id="${deck.id}">
                         👁
+                    </button>
+                    <button class="import-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.import')}" data-id="${deck.id}">
+                        ⬇
                     </button>
                     <button class="delete-public-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.delete')}" data-id="${deck.id}">
                         🗑
@@ -1518,8 +1516,11 @@ function renderPublicDeckList() {
             </div>
         `;
 
-        // Event Listener hinzufügen
-        // 1. VORSCHAU (Gilt jetzt für BEIDE Fälle)
+        publicDeckListContainer.appendChild(div);
+
+        // --- EVENT LISTENER (Bereinigt) ---
+
+        // 1. VORSCHAU (Für alle)
         const previewBtn = div.querySelector('.preview-btn');
         if (previewBtn) {
             previewBtn.addEventListener('click', (e) => {
@@ -1528,8 +1529,33 @@ function renderPublicDeckList() {
             });
         }
 
+        // 2. IMPORTIEREN (NEU: Für alle verfügbar!)
+        const importBtn = div.querySelector('.import-btn');
+        if (importBtn) {
+            importBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                // Kleiner Text-Unterschied: Bei mir selbst ist es eher ein "Duplizieren"
+                const msg = isMyDeck 
+                    ? `Möchtest du dein eigenes Deck "${deck.title}" importieren (duplizieren)?` // Optional übersetzen
+                    : t('dialog.import.msg', {title: deck.title});
+
+                const confirmed = await uiShowConfirm(t('dialog.import.title'), msg);
+
+                if (confirmed) {
+                    try {
+                        await storageService.importDeck(deck.id);
+                        switchTab('my-decks');
+                        await uiShowAlert(t('common.success'), t('msg.deckImported'));
+                    } catch (err) {
+                        console.error(err);
+                        await uiShowAlert(t('common.error'), err.message);
+                    }
+                }
+            });
+        }
+
+        // 3. LÖSCHEN (Nur für mich)
         if (isMyDeck) {
-            // 2. LÖSCHEN (Nur bei mir)
             div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const confirmed = await uiShowConfirm(t('dialog.delPublic.title'), t('dialog.delPublic.msg', {title: deck.title}), true);
@@ -1544,26 +1570,7 @@ function renderPublicDeckList() {
                     }
                 }
             });
-        } else {
-            // 3. IMPORTIEREN (Nur bei anderen)
-            div.querySelector('.import-btn').addEventListener('click', async (e) => {
-                e.stopPropagation();
-                const confirmed = await uiShowConfirm(t('dialog.import.title'), t('dialog.import.msg', {title: deck.title}));
-
-                if (confirmed) {
-                    try {
-                        await storageService.importDeck(deck.id);
-                        switchTab('my-decks');
-                        await uiShowAlert(t('common.success'), t('msg.deckImported'));
-                    } catch (err) {
-                        console.error(err);
-                        await uiShowAlert(t('common.error'), err.message);
-                    }
-                }
-            });
         }
-        
-        publicDeckListContainer.appendChild(div);
     });
 }
 

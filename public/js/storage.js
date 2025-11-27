@@ -160,8 +160,6 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
                     throw new Error("Ein öffentliches Deck mit dieser ID existiert bereits und gehört nicht dir.");
                 }
 
-                console.log("Öffentliches Deck gefunden. Aktualisiere...", publicDeckRef.id);
-
                 // A. Metadaten aktualisieren
                 await setDoc(publicDeckRef, {
                     title: deckData.title,
@@ -178,7 +176,6 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
 
             } else {
                 // --- CREATE MODUS ---
-                console.log("Erstelle neues öffentliches Deck...");
                 publicDeckRef = await addDoc(publicDecksRef, {
                     title: deckData.title,
                     type: deckData.type || 'standard',
@@ -262,7 +259,6 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
         migrateLegacyData: async () => {
             const user = auth.currentUser;
             if (!user) { alert("Bitte einloggen!"); return; }
-            console.log("Starte Migration...");
             
             const decksRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks`);
             const decksSnap = await getDocs(decksRef);
@@ -289,7 +285,6 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
                     }
                 }
             }
-            console.log(`Migration fertig. ${count} Karten aktualisiert.`);
             alert(`Migration erfolgreich! ${count} Karten aktualisiert. Bitte Seite neu laden.`);
         }
     };

@@ -43,6 +43,8 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [x] **Feature:** No decks with duplicate name in own decks. allowed for public decks.
 - [x] **Feature:** Flashcard growing in height with larger text.
 - [x] **Feature:** Public deck preview button also for own published decks.
+- [x] **Feature:** Queue cuts long texts off
+- [x] **Feature:** Enable importing own deck.
 
 ### ⚙️ Phase 4: Maintenance & Settings
 - [x] **Feature:** UI Language selection (German/English).
@@ -50,6 +52,10 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
     - `ERR_BLOCKED_BY_CLIENT` (Firebase channel issues with AdBlockers).
     - `Cross-Origin-Opener-Policy` (Google Auth warnings).
     - Handle Firebase timeouts gracefully.
+
+### Unimportant Features
+- [ ] **Feature:** Only show "and more cards" when there actually are more cards in preview.
+- [ ] **Feature:** Arrow between front and back text in preview should be central.
 
 ---
 
