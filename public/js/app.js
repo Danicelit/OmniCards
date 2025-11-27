@@ -419,7 +419,7 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
 
         const label = document.createElement('label');
         label.className = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-        label.textContent = t(field.label); // Übersetzung!
+        label.textContent = t(field.label);
         label.setAttribute('for', `${idPrefix}${field.id}`); 
         wrapper.appendChild(label);
 
@@ -430,7 +430,8 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
         input.type = field.type || 'text';
         input.name = field.id; 
         input.id = `${idPrefix}${field.id}`;
-        input.placeholder = t(field.placeholder); // Übersetzung!
+        input.placeholder = t(field.placeholder);
+        input.maxLength = 500;
         input.className = "w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 " + (field.hasAction ? "rounded-l-lg" : "rounded-lg");
 
         if (field.id === 'pinyin' || field.id === 'extra') {
@@ -900,10 +901,10 @@ function renderDeckList(decks) {
 
     sortedDecks.forEach(deck => {
         const div = document.createElement('div');
-        div.className = "p-6 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
+        div.className = "p-6 pr-14 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
         
         div.innerHTML = `
-            <h3 class="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">${deck.title}</h3>
+            <h3 class="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100 break-words hyphens-auto">${deck.title}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">${deck.cardCount || 0} ${t('common.cards')}</p>
             <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type}</p>
             
@@ -1080,18 +1081,36 @@ function renderCardList() {
         const displayBack = card.back || card.chinese || '?';
         const displayExtra = card.extra || card.note || card.pinyin || '';
 
+        // NEU: Wir packen den Inhalt in ein Div mit line-clamp-2
+        // 'break-words' sorgt dafür, dass lange Wörter ohne Leerzeichen umbrechen
+        // 'min-w-[150px]' gibt der Spalte eine Mindestbreite, damit sie nicht kollabiert
+        const cellClass = "line-clamp-2 overflow-hidden break-words max-w-[200px] max-h-[3em]";
+
         tr.innerHTML = `
-            <td class="px-2 py-3 text-sm text-gray-500">${index + 1}</td>
-            <td class="px-4 py-3 text-sm font-medium text-gray-900">${displayFront}</td>
-            <td class="px-4 py-3 text-sm text-gray-700">${displayBack}</td>
-            <td class="px-4 py-3 text-sm text-gray-600">${displayExtra}</td>
-            <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                <span class="font-bold">${card.srsLevel}</span>
-                <span class="text-xs text-gray-400 dark:text-gray-500 ml-1">(Streak: ${card.consecutiveCorrect || 0})</span>
+            <td class="px-2 py-3 text-sm text-gray-500 dark:text-gray-400 align-top">${index + 1}</td>
+            
+            <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 align-top">
+                <div class="${cellClass}" title="${displayFront.replace(/"/g, '&quot;')}">${displayFront}</div>
             </td>
-            <td class="px-4 py-3 text-sm">
-                <button data-id="${card.id}" class="edit-btn text-blue-600 hover:text-blue-800 font-medium mr-3">${t('table.edit')}</button>
-                <button data-id="${card.id}" class="delete-btn text-red-600 hover:text-red-800 font-medium">${t('table.delete')}</button>
+            
+            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 align-top">
+                <div class="${cellClass}" title="${displayBack.replace(/"/g, '&quot;')}">${displayBack}</div>
+            </td>
+            
+            <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 align-top">
+                <div class="${cellClass}" title="${displayExtra.replace(/"/g, '&quot;')}">${displayExtra}</div>
+            </td>
+            
+            <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 align-top">
+                <span class="font-bold">${card.srsLevel}</span>
+                <span class="text-xs text-gray-400 dark:text-gray-500 ml-1 block">(Streak: ${card.consecutiveCorrect || 0})</span>
+            </td>
+            
+            <td class="px-4 py-3 text-sm align-top">
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <button data-id="${card.id}" class="edit-btn text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">Edit</button>
+                    <button data-id="${card.id}" class="delete-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium">Löschen</button>
+                </div>
             </td>
         `;
         cardListBody.appendChild(tr);

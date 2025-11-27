@@ -162,11 +162,11 @@
                 </form>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 relative">
-                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 relative transition-all duration-300">
+                
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3">
                     <div class="flex items-center gap-3 w-full sm:w-auto">
                         <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200" data-i18n="study.learn">Lernen</h2>
-                        
                         <select id="study-mode-select" class="py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 cursor-pointer shadow-sm">
                             <option value="standard" data-i18n="mode.standard">Standard (A → B)</option>
                             <option value="reverse" data-i18n="mode.reverse">Umgekehrt (B → A)</option>
@@ -179,38 +179,40 @@
                     </div>
                 </div>
 
-                <div class="scene w-full h-64 perspective-1000 my-6 group">
-                    <div id="card-inner" class="card-inner w-full h-full relative text-center transition-transform duration-600 transform-style-3d shadow-xl rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <div class="scene w-full perspective-1000 mb-6">
+                    
+                    <div id="card-inner" class="card-inner w-full relative transition-transform duration-600 transform-style-3d grid grid-cols-1">
                         
-                        <div class="card-front absolute w-full h-full flex items-center justify-center flex-col bg-white dark:bg-gray-800 rounded-xl">
-                            <div id="card-front-text" class="text-4xl font-bold text-gray-800 dark:text-gray-100 p-4">
+                        <div class="card-front col-start-1 row-start-1 w-full min-h-[16rem] flex flex-col items-center justify-center p-8 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm backface-hidden">
+                            <div id="card-front-text" class="text-4xl font-bold text-gray-800 dark:text-gray-100 break-words w-full text-center">
                                 Lade...
                             </div>
-                            </div>
+                        </div>
 
-                        <div class="card-back absolute w-full h-full flex items-center justify-center flex-col bg-blue-50 dark:bg-slate-800 rounded-xl border-2 border-blue-100 dark:border-slate-700">
-                            <div id="card-back-content" class="text-gray-800 dark:text-gray-100">
+                        <div class="card-back col-start-1 row-start-1 w-full min-h-[16rem] flex flex-col items-center justify-center p-8 bg-blue-50 dark:bg-slate-800 rounded-xl border-2 border-blue-100 dark:border-slate-700 shadow-sm backface-hidden" style="transform: rotateY(180deg);">
+                            <div id="card-back-content" class="text-gray-800 dark:text-gray-100 break-words w-full text-center text-xl">
                                 </div>
                         </div>
+
                     </div>
                 </div>
 
-                <div class="flex justify-center mt-6 h-12">
-                    <button id="show-button" class="bg-indigo-600 text-white px-8 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md w-full sm:w-auto" data-i18n="study.showAnswer">
-                        Lösung anzeigen
-                    </button>
-                    
-                    <div id="feedback-buttons" class="hidden space-x-4 w-full sm:w-auto justify-center">
-                        <button id="wrong-button" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition shadow flex-1 sm:flex-none" data-i18n="study.wrong">
-                            Falsch / Nicht gewusst
+                <div class="flex flex-col items-center gap-4">
+                    <div class="flex justify-center h-12 w-full">
+                        <button id="show-button" class="bg-indigo-600 text-white px-8 py-2 rounded-lg hover:bg-indigo-700 transition shadow-md w-full sm:w-auto font-medium" data-i18n="study.showAnswer">
+                            Lösung anzeigen
                         </button>
-                        <button id="right-button" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition shadow flex-1 sm:flex-none" data-i18n="study.right">
-                            Richtig / Gewusst
-                        </button>
+                        
+                        <div id="feedback-buttons" class="hidden space-x-4 w-full sm:w-auto justify-center">
+                            <button id="wrong-button" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition shadow flex-1 sm:flex-none font-medium" data-i18n="study.wrong">
+                                Falsch
+                            </button>
+                            <button id="right-button" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition shadow flex-1 sm:flex-none font-medium" data-i18n="study.right">
+                                Richtig
+                            </button>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="mt-4 text-center">
+                    
                     <button id="rebuild-queue-btn" class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 underline" data-i18n="study.reset">
                         Stapel neu mischen (Reset)
                     </button>
@@ -324,7 +326,7 @@
             <form id="create-deck-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" data-i18n="modal.deckName">Name des Decks</label>
-                    <input type="text" name="deckName" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500">
+                    <input type="text" name="deckName" maxlength="40" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" data-i18n="modal.template">Vorlage wählen</label>
@@ -376,7 +378,7 @@
             <p id="dialog-message" class="text-gray-600 dark:text-gray-300 mb-4"></p>
             
             <div id="dialog-input-container" class="hidden mb-4">
-                <input type="text" id="dialog-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" autocomplete="off">
+                <input type="text" id="dialog-input" maxlength="40" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" autocomplete="off">
             </div>
 
             <div class="flex justify-end space-x-2">

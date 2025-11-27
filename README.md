@@ -35,8 +35,8 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
     - *Goal:* Discuss if updates to private decks should reflect on public ones.
 - [ ] **Feature:** Prevent duplicate publishing of the same deck by the same user.
 - [ ] **Feature:** Implement "Delete Public Copy" automatically when Private Deck is deleted (requires Sync/Link logic fix).
-- [ ] **Feature:** Limit input length of deck title, front, back and extra.
-- [ ] **Feature:** Cut off text in table and deck title.
+- [x] **Feature:** Limit input length of deck title, front, back and extra.
+- [x] **Feature:** Cut off text in table and deck title.
 - [ ] **Feature:** No decks with duplicate name in own decks. allowed for public decks.
 - [ ] **Feature:** Flashcard growing in height with larger text.
 
