@@ -464,7 +464,8 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
 
         const label = document.createElement('label');
         label.className = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-        label.textContent = t(field.label);
+        // NEU: Sternchen für Pflichtfelder
+        label.textContent = t(field.label) + (field.required ? ' *' : '');
         label.setAttribute('for', `${idPrefix}${field.id}`); 
         wrapper.appendChild(label);
 
@@ -477,6 +478,12 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
         input.id = `${idPrefix}${field.id}`;
         input.placeholder = t(field.placeholder);
         input.maxLength = 500;
+        
+        // NEU: HTML Required Attribut setzen
+        if (field.required) {
+            input.required = true;
+        }
+
         input.className = "w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 " + (field.hasAction ? "rounded-l-lg" : "rounded-lg");
 
         if (field.id === 'pinyin' || field.id === 'extra') {
@@ -488,7 +495,7 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
         if (field.hasAction) {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.textContent = t(field.actionLabel); // Übersetzung!
+            btn.textContent = t(field.actionLabel); 
             btn.className = "px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-300 dark:hover:bg-gray-500 text-sm";
             btn.onclick = () => field.actionHandler(input);
             inputGroup.appendChild(btn);
@@ -509,18 +516,20 @@ async function handleAddCard(e) {
     }
 
     const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
-    // Fallback safe check
-    if(template.fields && template.fields.length > 0) {
-        const firstFieldId = template.fields[0].id;
-        if (!newCard[firstFieldId]) {
-            return;
+    
+    // NEU: Strikte Validierung aller Pflichtfelder
+    for (const field of template.fields) {
+        if (field.required) {
+            const value = newCard[field.id];
+            // Prüfen ob leer
+            if (!value || value.length === 0) {
+                await uiShowAlert(t('common.error'), `Bitte fülle das Feld "${t(field.label)}" aus.`);
+                // Fokus auf das fehlende Feld setzen
+                const el = document.getElementById(`input-${field.id}`);
+                if(el) el.focus();
+                return; // Abbrechen
+            }
         }
-        
-        // Fokus Reset Logik
-        setTimeout(() => {
-             const el = document.getElementById(`input-${firstFieldId}`);
-             if(el) el.focus();
-        }, 100);
     }
 
     newCard.srsLevel = 0;
@@ -530,8 +539,18 @@ async function handleAddCard(e) {
     try {
         await storageService.addCardToDeck(currentDeckId, newCard);
         addCardForm.reset();
+        
+        // Fokus auf erstes Feld zurücksetzen für schnelle Eingabe
+        if(template.fields.length > 0) {
+             const firstId = template.fields[0].id;
+             setTimeout(() => {
+                 const el = document.getElementById(`input-${firstId}`);
+                 if(el) el.focus();
+             }, 100);
+        }
     } catch (error) { 
         console.error(error);
+        await uiShowAlert(t('common.error'), t('msg.saveError'));
     }
 }
 
@@ -777,6 +796,19 @@ async function handleUpdateCard(e) {
 
     for (let [key, value] of formData.entries()) {
         updatedData[key] = value.trim();
+    }
+
+    const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
+    
+    // Validierung
+    for (const field of template.fields) {
+        if (field.required) {
+            const value = updatedData[field.id];
+            if (!value || value.length === 0) {
+                await uiShowAlert(t('common.error'), `${t('msg.missingFields')}"${t(field.label)}"`);
+                return;
+            }
+        }
     }
 
     // Validierung (optional: prüfen ob Pflichtfelder da sind)

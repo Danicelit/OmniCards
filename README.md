@@ -21,8 +21,10 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [x] **Logic:** Make the "Edit Card" modal dynamic (currently hardcoded to Chinese fields, breaks for Math decks).
 - [x] **Logic:** Change the table attributes in each deck accordingly, fix standard info column bug.
 - [x] **Logic:** Level is not correctly incrementing or decrementing, card should not be button.
-- [ ] **Logic:** New Cards are not added to queue.
+- [x] **Logic:** New Cards are not added to queue.
 - [x] **Logic:** Fix public deck list layout for long deck titles.
+- [x] **Logic:** Queue needs general fix.
+- [x] **Logic:** Required input fields need to be filled before adding card.
 
 ### 🎨 Phase 2: UI/UX Polish (No more System Alerts)
 - [x] **Refactor:** Replace native browser `confirm()` and `alert()` with custom, styled Modals (for deletion, publishing, etc.).

@@ -116,6 +116,7 @@ const translations = {
         "msg.deleteError": "Fehler beim Löschen.",
         "msg.enterName": "Bitte einen Namen eingeben.",
         "msg.deckExists": "Ein Deck mit diesem Namen existiert bereits.",
+        "msg.missingFields": "Bitte fülle das Feld aus: ",
         
         // Dialog Questions
         "dialog.delDeck.title": "Deck löschen?",
@@ -268,6 +269,7 @@ const translations = {
         "msg.deleteError": "Error deleting data.",
         "msg.enterName": "Please enter a name.",
         "msg.deckExists": "A deck with this name already exists.",
+        "msg.missingFields": "Please fill in the field ",
 
         // Dialog Questions
         "dialog.delDeck.title": "Delete Deck?",
