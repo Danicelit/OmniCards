@@ -136,29 +136,67 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
 
         // --- CLEANUP HIER STARTEN ---
 
+        // 7. Deck VERÖFFENTLICHEN (Update oder Neu)
         publishDeckFull: async (deckId, deckData) => { 
             const user = auth.currentUser;
             if (!user) throw new Error("Nicht eingeloggt");
 
             const publicDecksRef = collection(db, `/artifacts/${appId}/public_decks`);
-            const newPublicDeckRef = await addDoc(publicDecksRef, {
-                title: deckData.title,
-                type: deckData.type || 'standard',
-                originalAuthor: user.displayName || "Anonym",
-                originalAuthorId: user.uid,
-                originalDeckId: deckId,
-                publishedAt: new Date().toISOString(),
-                cardCount: deckData.cardCount || 0
-            });
+            
+            // 1. Prüfen: Existiert das Deck schon öffentlich?
+            // Wir suchen nach der originalDeckId
+            const q = query(publicDecksRef, where("originalDeckId", "==", deckId));
+            const existingSnap = await getDocs(q);
 
+            let publicDeckRef;
+
+            if (!existingSnap.empty) {
+                // --- UPDATE MODUS ---
+                const existingDoc = existingSnap.docs[0];
+                publicDeckRef = existingDoc.ref;
+                
+                // Sicherheitscheck: Gehört das existierende Public Deck mir?
+                if (existingDoc.data().originalAuthorId !== user.uid) {
+                    throw new Error("Ein öffentliches Deck mit dieser ID existiert bereits und gehört nicht dir.");
+                }
+
+                console.log("Öffentliches Deck gefunden. Aktualisiere...", publicDeckRef.id);
+
+                // A. Metadaten aktualisieren
+                await setDoc(publicDeckRef, {
+                    title: deckData.title,
+                    type: deckData.type || 'standard',
+                    cardCount: deckData.cardCount || 0,
+                    publishedAt: new Date().toISOString() // Zeitstempel aktualisieren = "Bump" nach oben
+                }, { merge: true });
+
+                // B. Alte öffentliche Karten löschen
+                const oldCardsRef = collection(db, `/artifacts/${appId}/public_decks/${publicDeckRef.id}/cards`);
+                const oldCardsSnap = await getDocs(oldCardsRef);
+                const deletePromises = oldCardsSnap.docs.map(doc => deleteDoc(doc.ref));
+                await Promise.all(deletePromises);
+
+            } else {
+                // --- CREATE MODUS ---
+                console.log("Erstelle neues öffentliches Deck...");
+                publicDeckRef = await addDoc(publicDecksRef, {
+                    title: deckData.title,
+                    type: deckData.type || 'standard',
+                    originalAuthor: user.displayName || "Anonym",
+                    originalAuthorId: user.uid,
+                    originalDeckId: deckId, // WICHTIG für die Wiedererkennung
+                    publishedAt: new Date().toISOString(),
+                    cardCount: deckData.cardCount || 0
+                });
+            }
+
+            // 2. Neue Karten kopieren (für Update und Create gleich)
             const privateCardsRef = collection(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards`);
             const querySnapshot = await getDocs(query(privateCardsRef));
             
-            const publicCardsRef = collection(db, `/artifacts/${appId}/public_decks/${newPublicDeckRef.id}/cards`);
+            const publicCardsRef = collection(db, `/artifacts/${appId}/public_decks/${publicDeckRef.id}/cards`);
             const batchPromises = querySnapshot.docs.map(doc => {
                 const data = doc.data();
-                // CLEANUP: Nur noch generische Felder nutzen!
-                // Wir gehen davon aus, dass die Daten migriert wurden.
                 return addDoc(publicCardsRef, {
                     front: data.front,
                     back: data.back,
@@ -169,7 +207,7 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             });
 
             await Promise.all(batchPromises);
-            return newPublicDeckRef.id;
+            return publicDeckRef.id;
         },
 
         // ... subscribePublicDecks, getPublicDeckPreview, importDeck, deletePublicDeck (bleiben gleich) ...

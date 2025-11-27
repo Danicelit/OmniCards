@@ -21,24 +21,25 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [x] **Logic:** Make the "Edit Card" modal dynamic (currently hardcoded to Chinese fields, breaks for Math decks).
 - [x] **Logic:** Change the table attributes in each deck accordingly, fix standard info column bug.
 - [x] **Logic:** Level is not correctly incrementing or decrementing, card should not be button.
+- [ ] **Logic:** New Cards are not added to queue.
 
 ### 🎨 Phase 2: UI/UX Polish (No more System Alerts)
 - [x] **Refactor:** Replace native browser `confirm()` and `alert()` with custom, styled Modals (for deletion, publishing, etc.).
 - [x] **UX:** Improve "Empty Deck" state:
     - Change text from "Good job!" to "Add cards to start".
     - Hide "All cards learned" message when deck is actually empty.
-- [ ] **UX:** Improve feedback messages (Toast notifications instead of text labels).
 
 ### 🏗️ Phase 3: Architecture & Marketplace Evolution
-- [ ] **Architecture:** Decide on **Synchronization vs. Snapshot** model for Public Decks.
+- [x] **Architecture:** Decide on **Synchronization vs. Snapshot** model for Public Decks.
     - *Current:* Public decks are snapshots (no updates).
     - *Goal:* Discuss if updates to private decks should reflect on public ones.
-- [ ] **Feature:** Prevent duplicate publishing of the same deck by the same user.
-- [ ] **Feature:** Implement "Delete Public Copy" automatically when Private Deck is deleted (requires Sync/Link logic fix).
+- [x] **Feature:** Prevent duplicate publishing of the same deck by the same user.
+- [x] **Feature:** Implement "Delete Public Copy" automatically when Private Deck is deleted (requires Sync/Link logic fix).
 - [x] **Feature:** Limit input length of deck title, front, back and extra.
 - [x] **Feature:** Cut off text in table and deck title.
 - [x] **Feature:** No decks with duplicate name in own decks. allowed for public decks.
 - [x] **Feature:** Flashcard growing in height with larger text.
+- [ ] **Feature:** Public deck preview button also for own published decks.
 
 ### ⚙️ Phase 4: Maintenance & Settings
 - [x] **Feature:** UI Language selection (German/English).
