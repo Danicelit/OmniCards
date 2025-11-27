@@ -22,6 +22,7 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [x] **Logic:** Change the table attributes in each deck accordingly, fix standard info column bug.
 - [x] **Logic:** Level is not correctly incrementing or decrementing, card should not be button.
 - [ ] **Logic:** New Cards are not added to queue.
+- [ ] **Logic:** Fix public deck list layout for long deck titles.
 
 ### 🎨 Phase 2: UI/UX Polish (No more System Alerts)
 - [x] **Refactor:** Replace native browser `confirm()` and `alert()` with custom, styled Modals (for deletion, publishing, etc.).
@@ -39,7 +40,7 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [x] **Feature:** Cut off text in table and deck title.
 - [x] **Feature:** No decks with duplicate name in own decks. allowed for public decks.
 - [x] **Feature:** Flashcard growing in height with larger text.
-- [ ] **Feature:** Public deck preview button also for own published decks.
+- [x] **Feature:** Public deck preview button also for own published decks.
 
 ### ⚙️ Phase 4: Maintenance & Settings
 - [x] **Feature:** UI Language selection (German/English).

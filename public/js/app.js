@@ -375,7 +375,6 @@ async function handleRenameDeck() {
         try {
             await storageService.updateDeck(currentDeckId, { title: trimmedTitle });
             document.querySelector('h1').textContent = trimmedTitle;
-            showToast(t('msg.deckRenamed'), "success");
         } catch (error) {
             console.error(error);
             await uiShowAlert("Fehler", error.message);
@@ -1385,18 +1384,25 @@ function renderPublicDeckList() {
         let actionBtnHtml = '';
         
         if (isMyDeck) {
-            actionBtnHtml = `
-                <button class="delete-public-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium transition" data-id="${deck.id}">
-                    🗑 Löschen
-                </button>`;
-        } else {
+            // Fall 1: Mein Deck -> Vorschau UND Löschen
             actionBtnHtml = `
                 <div class="flex space-x-2">
-                    <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="Vorschau" data-id="${deck.id}">
+                    <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.preview')}" data-id="${deck.id}">
                         👁
                     </button>
-                    <button class="import-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-1 rounded text-sm font-medium transition" title="Direkt Importieren" data-id="${deck.id}">
-                        ⬇ Import
+                    <button class="delete-public-btn bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-100 hover:bg-red-200 dark:hover:bg-red-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.delete')}" data-id="${deck.id}">
+                        🗑
+                    </button>
+                </div>`;
+        } else {
+            // Fall 2: Fremdes Deck -> Vorschau UND Importieren
+            actionBtnHtml = `
+                <div class="flex space-x-2">
+                    <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.preview')}" data-id="${deck.id}">
+                        👁
+                    </button>
+                    <button class="import-btn bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-100 hover:bg-green-200 dark:hover:bg-green-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.import')}" data-id="${deck.id}">
+                        ⬇
                     </button>
                 </div>`;
         }
@@ -1408,43 +1414,51 @@ function renderPublicDeckList() {
                         ${deck.title}
                         ${isMyDeck ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200">Du</span>' : ''}
                     </h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">von ${deck.originalAuthor}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${t('comm.createdBy')} ${deck.originalAuthor}</p>
                     <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">${deck.type} • ${deck.cardCount} ${t('common.cards')}</p>
                 </div>
                 ${actionBtnHtml}
             </div>
         `;
 
-        // Event Listener (wie gehabt)
+        // Event Listener hinzufügen
+        // 1. VORSCHAU (Gilt jetzt für BEIDE Fälle)
+        const previewBtn = div.querySelector('.preview-btn');
+        if (previewBtn) {
+            previewBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openPreviewModal(deck);
+            });
+        }
+
         if (isMyDeck) {
+            // 2. LÖSCHEN (Nur bei mir)
             div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const confirmed = await uiShowConfirm(t('dialog.delPublic.title'), t('dialog.delPublic.msg', {title: deck.title}), true);
             
-            if (confirmed) {
-                try {
-                    await storageService.deletePublicDeck(deck.id);
-                    await uiShowAlert(t('common.success'), t('msg.deckDeleted'));
-                } catch (err) {
+                if (confirmed) {
+                    try {
+                        await storageService.deletePublicDeck(deck.id);
+                        await uiShowAlert(t('common.success'), t('msg.deckDeleted'));
+                    } catch (err) {
                         console.error(err);
                         await uiShowAlert(t('common.error'), err.message);
                     }
                 }
             });
         } else {
-            div.querySelector('.preview-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                openPreviewModal(deck);
-            });
+            // 3. IMPORTIEREN (Nur bei anderen)
             div.querySelector('.import-btn').addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const confirmed = await uiShowConfirm(t('dialog.import.title'), t('dialog.import.msg', {title: deck.title}));
 
-            if (confirmed) {
-                try {
-                    await storageService.importDeck(deck.id);
-                    switchTab('my-decks');
-                } catch (err) {
+                if (confirmed) {
+                    try {
+                        await storageService.importDeck(deck.id);
+                        switchTab('my-decks');
+                        await uiShowAlert(t('common.success'), t('msg.deckImported'));
+                    } catch (err) {
                         console.error(err);
                         await uiShowAlert(t('common.error'), err.message);
                     }
