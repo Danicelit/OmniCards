@@ -115,6 +115,7 @@ const translations = {
         "msg.saveError": "Fehler beim Speichern.",
         "msg.deleteError": "Fehler beim Löschen.",
         "msg.enterName": "Bitte einen Namen eingeben.",
+        "msg.deckExists": "Ein Deck mit diesem Namen existiert bereits.",
         
         // Dialog Questions
         "dialog.delDeck.title": "Deck löschen?",
@@ -266,6 +267,7 @@ const translations = {
         "msg.saveError": "Error saving data.",
         "msg.deleteError": "Error deleting data.",
         "msg.enterName": "Please enter a name.",
+        "msg.deckExists": "A deck with this name already exists.",
 
         // Dialog Questions
         "dialog.delDeck.title": "Delete Deck?",

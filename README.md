@@ -37,8 +37,8 @@ Following a comprehensive testing phase (v1.0), the following roadmap has been e
 - [ ] **Feature:** Implement "Delete Public Copy" automatically when Private Deck is deleted (requires Sync/Link logic fix).
 - [x] **Feature:** Limit input length of deck title, front, back and extra.
 - [x] **Feature:** Cut off text in table and deck title.
-- [ ] **Feature:** No decks with duplicate name in own decks. allowed for public decks.
-- [ ] **Feature:** Flashcard growing in height with larger text.
+- [x] **Feature:** No decks with duplicate name in own decks. allowed for public decks.
+- [x] **Feature:** Flashcard growing in height with larger text.
 
 ### ⚙️ Phase 4: Maintenance & Settings
 - [x] **Feature:** UI Language selection (German/English).

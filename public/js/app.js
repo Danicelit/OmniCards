@@ -356,10 +356,26 @@ async function handleRenameDeck() {
     
     const newTitle = await uiShowPrompt(t('dialog.rename.title'), t('dialog.rename.msg'), oldTitle);
     
+    // Prüfen ob gültig
     if (newTitle && newTitle.trim() !== "" && newTitle !== oldTitle) {
+        const trimmedTitle = newTitle.trim();
+
+        // NEU: Duplikat-Check
+        // Wir prüfen alle Decks AUSSER dem aktuellen (sich selbst darf man ja gleich nennen)
+        const exists = cachedDecks.some(d => 
+            d.id !== currentDeckId && // Nicht das aktuelle Deck prüfen
+            d.title.toLowerCase() === trimmedTitle.toLowerCase()
+        );
+
+        if (exists) {
+            await uiShowAlert(t('common.error'), t('msg.deckExists'));
+            return;
+        }
+
         try {
-            await storageService.updateDeck(currentDeckId, { title: newTitle.trim() });
-            document.querySelector('h1').textContent = newTitle.trim();
+            await storageService.updateDeck(currentDeckId, { title: trimmedTitle });
+            document.querySelector('h1').textContent = trimmedTitle;
+            showToast(t('msg.deckRenamed'), "success");
         } catch (error) {
             console.error(error);
             await uiShowAlert("Fehler", error.message);
@@ -554,14 +570,22 @@ async function handleCreateDeckSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData(createDeckForm);
-    const title = formData.get('deckName');
-    if (!title) {
-        await uiShowAlert(t('common.error'), t('error.enterName'));
-        return;
-    }
+    const title = formData.get('deckName').trim(); // Wichtig: trim()
     const type = formData.get('template');
 
-    if (!title) return;
+    if (!title) {
+        await uiShowAlert(t('common.error'), t('msg.enterName'));
+        return;
+    }
+
+    // NEU: Duplikat-Check (Case-Insensitive)
+    // Wir prüfen in der lokalen Liste 'cachedDecks', ob der Name schon da ist
+    const exists = cachedDecks.some(d => d.title.toLowerCase() === title.toLowerCase());
+    
+    if (exists) {
+        await uiShowAlert(t('common.error'), t('msg.deckExists'));
+        return; // Abbrechen
+    }
 
     await storageService.createDeck(title, type);
     
