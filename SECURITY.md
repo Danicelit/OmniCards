@@ -1,26 +1,19 @@
-# Security Policy & Architecture 🔒
+# Security Architecture 🔒
 
-This document outlines the security architecture of OmniCards, specifically focusing on data isolation, authentication, and database rules via Google Firebase.
+## 1. Authentication
+We use **Firebase Authentication** (Google OAuth). The user's `uid` is the trusted key for all data operations.
 
----
+## 2. Database Isolation (Firestore Rules)
 
-## 1. Authentication (Identity)
+### Private Data (`/users/{userId}`)
+* **Rule:** `request.auth.uid == userId`
+* **Effect:** A user can ONLY read and write data in their own namespace. Accessing another user's private deck is mathematically impossible.
 
-OmniCards uses **Firebase Authentication** to handle user identity.
-* **Provider:** Google OAuth.
-* **Mechanism:** When a user logs in, they receive a secure ID Token (`request.auth`).
-* **User ID (`uid`):** This unique string (e.g., `user123`) is the key to all security rules. We never trust data sent from the client (frontend); we only trust the `uid` contained in the verified token.
+### Public Data (`/public_decks`)
+* **Read:** Open to everyone (`allow read: if true`).
+* **Write (Create):** Any authenticated user.
+* **Delete/Update:** Only the original author.
+    * *Mechanism:* The rule compares `request.auth.uid` with the stored `resource.data.originalAuthorId`.
 
----
-
-## 2. Database Security (Firestore Rules)
-
-Our security model is "Deny by Default". Access is only granted if a specific rule allows it.
-
-### A. Private User Data (Strict Isolation)
-**Path:** `/artifacts/{appId}/users/{userId}/...`
-
-```javascript
-match /artifacts/{appId}/users/{userId}/{document=**} {
-  allow read, write: if request.auth != null && request.auth.uid == userId;
-}
+### Sub-Collections (Cards)
+* **Delete:** Uses a custom function `isDeckOwner()` to verify that the user trying to delete a card also owns the parent deck. This prevents malicious users from emptying public decks they don't own.
