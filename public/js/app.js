@@ -1300,14 +1300,14 @@ async function openPreviewModal(deck) {
 
     try {
         const sampleCards = await storageService.getPublicDeckPreview(deck.id);
-        renderPreviewCards(sampleCards, deck.type);
+        renderPreviewCards(sampleCards, deck.type, deck.cardCount);
     } catch (err) {
         console.error(err);
         previewCardsList.innerHTML = '<p class="text-red-500">Fehler beim Laden der Vorschau.</p>';
     }
 }
 
-function renderPreviewCards(cards, deckType) {
+function renderPreviewCards(cards, deckType, totalCount = 0) {
     previewCardsList.innerHTML = '';
     
     if (cards.length === 0) {
@@ -1332,10 +1332,12 @@ function renderPreviewCards(cards, deckType) {
         previewCardsList.appendChild(div);
     });
     
-    const info = document.createElement('p');
-    info.className = "text-xs text-center text-gray-400 mt-2";
-    info.textContent = `${t('comm.moreExamples')}`;
-    previewCardsList.appendChild(info);
+    if (totalCount > cards.length) {
+        const info = document.createElement('p');
+        info.className = "text-xs text-center text-gray-400 mt-2 italic";
+        info.textContent = t('comm.moreExamples'); 
+        previewCardsList.appendChild(info);
+    }
 }
 
 function closePreviewModal() {
