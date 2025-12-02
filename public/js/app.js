@@ -1319,15 +1319,25 @@ function renderPreviewCards(cards, deckType, totalCount = 0) {
 
     cards.forEach(card => {
         const div = document.createElement('div');
-        div.className = "p-3 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex flex-col sm:flex-row gap-2 sm:items-center justify-between";
+        div.className = "p-3 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 grid grid-cols-1 sm:grid-cols-[1fr,auto,1fr] gap-1 sm:gap-4 items-center";
         
         // Legacy Fallbacks
         const front = card.front || card.german || '?';
         const back = card.back || card.chinese || '?';
         
         div.innerHTML = `
-            <div class="font-medium text-gray-800 dark:text-gray-200 truncate w-full sm:w-1/2">${front}</div>
-            <div class="text-gray-600 dark:text-gray-400 truncate w-full sm:w-1/2 sm:text-right">➔ ${back}</div>
+            <div class="font-medium text-gray-800 dark:text-gray-200 truncate text-center sm:text-left w-full" title="${front.replace(/"/g, '&quot;')}">
+                ${front}
+            </div>
+
+            <div class="text-gray-400 dark:text-gray-500 text-center text-sm">
+                <span class="hidden sm:inline">➔</span>
+                <span class="sm:hidden">↓</span>
+            </div>
+
+            <div class="text-gray-600 dark:text-gray-400 truncate text-center sm:text-right w-full" title="${back.replace(/"/g, '&quot;')}">
+                ${back}
+            </div>
         `;
         previewCardsList.appendChild(div);
     });
