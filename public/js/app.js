@@ -1,12 +1,20 @@
+/**
+ * @file app.js
+ * @description Main controller logic for OmniCards. Handles UI rendering,
+ * state management, SRS study logic, and interactions with the storage service.
+ * @verion 1.1.0
+ */
+
 import { createFirebaseService } from './storage.js';
 import { convertPinyinTones } from './utils.js';
 import { CardTemplates } from './templates.js';
 import { t, setLanguage } from './i18n.js';
 
-// --- Globale Variablen & State ---
+// --- Global State & Configuration ---
 let currentDeckId = null;
 let unsubscribeDecks = null;
 let unsubscribeCards = null;
+// Ref object to hold the unsubscribe function for cards, passed to storage service
 const unsubscribeRef = { current: null };
 
 const STORAGE_MODE_KEY = 'chineseCardsStorageMode';
@@ -15,27 +23,30 @@ const LOCAL_STORAGE_KEY = 'chineseCards';
 let currentStorageMode = 'firebase';
 let storageService = null;
 let currentEditCardId = null;
+
+// Sort state for the deck table
 let currentSort = { column: 'front', direction: 'asc' };
 
-let allCards = []; 
-let reviewQueue = []; 
-let currentCard = null; 
+// Main data containers
+let allCards = [];      // Snapshot of all cards in the current deck
+let reviewQueue = [];   // Active study queue (cards to be learned)
+let currentCard = null; // Currently displayed card object
 let currentDeckType = 'standard';
 
-let currentUser = null; // Speichert das User-Objekt
+let currentUser = null; // Stores the firebase User object
 
-let currentDeckSort = 'lastLearned'; // Standard: Zuletzt gelernt
-let cachedDecks = [];
+let currentDeckSort = 'lastLearned'; // Default sort for dashboard
+let cachedDecks = [];                // Local cache of deck to prevent flickering/re-fetching
 
-let currentStudyMode = 'standard'; // 'standard', 'reverse', 'random'
+let currentStudyMode = 'standard';  // 'standard (A->B', 'reverse (B->A)', 'random'
 
-let currentPreviewDeckId = null;
+let currentPreviewDeckId = null;    // ID of the deck currently shown in preview modal
+let allPublicDecks = [];            // Cache for public marketplace decks
 
-let allPublicDecks = []; // Cache für alle geladenen Public Decks
-
-let dialogResolve = null; // Function to call when user clicks a button
+let dialogResolve = null; // Promise resolve function for custom dialogs
 
 // --- DOM Elements ---
+
 const appContainer = document.getElementById('app-container');
 const firebaseErrorContainer = document.getElementById('firebase-error-container');
 const userIdEl = document.getElementById('user-id');
@@ -142,13 +153,16 @@ const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
 
 
 // --- Initialization ---
+
+/**
+ * Main entry point . initializes Firebase, Event Listeners, and Theme.
+ */
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Firebase Init
+    // 1. Initialize Storage Service & Auth Callback
     storageService = createFirebaseService((user) => {
         currentUser = user;
         if (user) {
-            
-            // UI Update: Logged In
+            // Logged In State
             if (user.isAnonymous) {
                 if(userDisplayName) {
                     userDisplayName.textContent = "Gast";
@@ -161,22 +175,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(logoutBtn) logoutBtn.classList.add('hidden');
                 if(userAvatar) userAvatar.classList.add('hidden');
             } else {
-                // Echter Google User
+                // Real Google User
                 if(userDisplayName) {
                     userDisplayName.textContent = user.displayName || user.email;
                     userDisplayName.classList.remove('hidden');
                 }
                 
-                // AVATAR LOGIK VERBESSERT
+                // Avatar logic
                 if (user.photoURL) {
-                    // Fall 1: Google Bild vorhanden
                     if(userAvatar) {
                         userAvatar.src = user.photoURL;
                         userAvatar.classList.remove('hidden');
                     }
                     if(userAvatarPlaceholder) userAvatarPlaceholder.classList.add('hidden');
                 } else {
-                    // Fall 2: Kein Bild -> Zeige Initialen
+                    // Fallback to initials if no photo
                     if(userAvatar) userAvatar.classList.add('hidden');
                     if(userAvatarPlaceholder) {
                         const name = user.displayName || user.email || "?";
@@ -190,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             showDashboard();
         } else {
-            // Not Logged In
+            // Logged Out State
             if(loginBtn) loginBtn.classList.remove('hidden');
             if(userDisplayName) userDisplayName.classList.add('hidden');
             if(logoutBtn) logoutBtn.classList.add('hidden');
@@ -205,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.migrate = () => storageService.migrateLegacyData();
 
-    // 2. General Event Listeners
+    // 2. Register global Event Listeners
     if (backToDashboardBtn) backToDashboardBtn.addEventListener('click', showDashboard);
     if (addCardForm) addCardForm.addEventListener('submit', handleAddCard);
     if (showButton) showButton.addEventListener('click', flipCard);
@@ -220,19 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (reviewCountContainer) reviewCountContainer.addEventListener('click', buildAndShowQueueModal);
     if (rebuildQueueBtn) rebuildQueueBtn.addEventListener('click', handleRebuildQueue);
 
-    // Pinyin Helpers (Global Listeners for generated inputs)
-    // Wir nutzen Event Delegation oder direkte Listener beim Erstellen, 
-    // aber diese hier sind für statische Felder (falls noch vorhanden)
+    // Global listener for Pinyin generated inputs (Event Delegation fallback)
     if(inputExtra) inputExtra.addEventListener('keyup', handlePinyinKeyup);
     
-    // 3. Create Deck Listeners (NEU)
+    // 3. Create Deck logic
     if (createDeckBtn) createDeckBtn.addEventListener('click', openCreateDeckModal);
     if (createDeckForm) createDeckForm.addEventListener('submit', handleCreateDeckSubmit);
     if (cancelCreateDeckBtn) cancelCreateDeckBtn.addEventListener('click', () => {
         createDeckModal.classList.add('opacity-0', 'pointer-events-none');
     });
 
-    // 4. Settings & Edit Modals
+    // Settings & Edit Modals
     if(openSettingsBtn) openSettingsBtn.addEventListener('click', openModal);
     if(closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeModal);
     if(settingsModal) settingsModal.addEventListener('click', (e) => {
@@ -245,68 +256,51 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === editCardModal) closeEditModal();
     });
 
-    // 5. Queue Modal
+    // Queue Modal
     if(closeQueueModalBtn) closeQueueModalBtn.addEventListener('click', closeQueueModal);
     if(queueModal) queueModal.addEventListener('click', (e) => {
         if (e.target === queueModal) closeQueueModal();
     });
 
-    // 6. Auth
+    // Auth Actions
     if (loginBtn) loginBtn.addEventListener('click', () => storageService.loginWithGoogle());
     if (logoutBtn) logoutBtn.addEventListener('click', () => storageService.logout());
 
-    // 7. Tabs
+    // Tabs
     if (tabMyDecks) tabMyDecks.addEventListener('click', () => switchTab('my-decks'));
     if (tabCommunity) tabCommunity.addEventListener('click', () => switchTab('community'));
 
-    // 8. Sync (Optional)
+    // Deck Actions
     if(syncLocalToCloudBtn) syncLocalToCloudBtn.addEventListener('click', handleSyncLocalToCloud);
-
     if (deleteDeckBtn) deleteDeckBtn.addEventListener('click', handleDeleteDeck);
-
     if (renameDeckBtn) renameDeckBtn.addEventListener('click', handleRenameDeck);
 
-    // Sort Decks Listener
+    // Dashboard Sorting
     if (deckSortSelect) {
         deckSortSelect.addEventListener('change', (e) => {
             currentDeckSort = e.target.value;
-            // Wir müssen die Liste neu rendern. 
-            // Da wir die Decks nicht global gespeichert haben (nur im Closure von subscribeDecks),
-            // ist der einfachste Weg: Den Listener neu triggern oder die Decks global speichern.
-            
-            // Bessere Lösung: Wir speichern die Decks kurz global zwischen oder triggern reload.
-            // Da 'showDashboard' den Listener neu aufbaut, rufen wir das einfach auf (etwas brachial aber sicher).
-            // ODER ELEGANT: Wir speichern 'cachedDecks' global.
-            
-            // Lass uns 'cachedDecks' einführen (siehe Schritt F)
             renderDeckList(cachedDecks); 
         });
     }
-    // 1. Theme laden (Ganz am Anfang!)
-    initTheme();
 
-    // 2. Listener für Settings
+    // Initialie Theme (Dark/Light)
+    initTheme();
     if (darkModeToggle) darkModeToggle.addEventListener('click', toggleDarkMode);
 
-    // 3. Lern-Modus laden
+    // Initialize study Mode
     const savedMode = localStorage.getItem('omniCardsStudyMode');
     if (savedMode) {
         currentStudyMode = savedMode;
         if (studyModeSelect) studyModeSelect.value = savedMode;
     }
 
-    // Listener für Modus-Wechsel
     if (studyModeSelect) {
         studyModeSelect.addEventListener('change', (e) => {
             currentStudyMode = e.target.value;
             localStorage.setItem('omniCardsStudyMode', currentStudyMode);
-            
-            // NEU: Sofort anwenden!
-            // 1. Wenn wir uns in einem Deck befinden...
+
             if (currentDeckId) {
-                // 2. ...Mischen wir den Stapel neu (damit die Sortierung/Zufall greift)
                 buildReviewQueue();
-                // 3. ...Und zeigen sofort eine neue Karte im neuen Modus an
                 showNextCard();
             }
         });
@@ -320,28 +314,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === previewModal) closePreviewModal();
     });
 
-    // Marketplace Search & Sort Listeners
-    if (publicSearchInput) {
-        publicSearchInput.addEventListener('input', () => renderPublicDeckList());
-    }
-    if (publicSortSelect) {
-        publicSortSelect.addEventListener('change', () => renderPublicDeckList());
-    }
+    // Marketplace Filters
+    if (publicSearchInput) {publicSearchInput.addEventListener('input', () => renderPublicDeckList());}
+    if (publicSortSelect) {publicSortSelect.addEventListener('change', () => renderPublicDeckList());}
+    if (publicFilterSelect) {publicFilterSelect.addEventListener('change', () => renderPublicDeckList());}
 
-    if (publicFilterSelect) {
-        publicFilterSelect.addEventListener('change', () => renderPublicDeckList());
-    }
-
-    // Sprache
+    // Language Selection
     if (languageSelect) {
-        // Aktuelle Sprache setzen (damit Dropdown stimmt)
         languageSelect.value = localStorage.getItem('omniCardsLanguage') || 'de';
         
         languageSelect.addEventListener('change', (e) => {
             const lang = e.target.value;
-            setLanguage(lang); // <--- NEU: Funktion aufrufen
-            // Optional: Seite neu laden, um auch JS-generierte Inhalte (Templates) sicher zu aktualisieren
-            // Das ist oft einfacher als alles dynamisch neu zu rendern.
+            setLanguage(lang);
             window.location.reload(); 
         });
     }
@@ -350,20 +334,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- Logic Functions ---
 
+/**
+ * Handles renaming of the currently active deck.
+ * Prompts user for new name and checks for duplicates locally
+ */
 async function handleRenameDeck() {
     if (!currentDeckId) return;
     const oldTitle = document.querySelector('h1').textContent;
     
     const newTitle = await uiShowPrompt(t('dialog.rename.title'), t('dialog.rename.msg'), oldTitle);
     
-    // Prüfen ob gültig
     if (newTitle && newTitle.trim() !== "" && newTitle !== oldTitle) {
         const trimmedTitle = newTitle.trim();
 
-        // NEU: Duplikat-Check
-        // Wir prüfen alle Decks AUSSER dem aktuellen (sich selbst darf man ja gleich nennen)
+        // Check for duplicates in cached decks (excluding self)
         const exists = cachedDecks.some(d => 
-            d.id !== currentDeckId && // Nicht das aktuelle Deck prüfen
+            d.id !== currentDeckId &&
             d.title.toLowerCase() === trimmedTitle.toLowerCase()
         );
 
@@ -382,33 +368,35 @@ async function handleRenameDeck() {
     }
 }
 
-// Abstracted Data Update Function
+/**
+ * Central handler for data updates from Firestore.
+ * Handles queue management , empty states, and card injections.
+ * @param {Array} cards - The new list of cards from the database 
+ * @returns 
+ */
 function handleDataUpdate(cards) {
-    // 1. Änderung erkennen
+    // 1. Detect deletion: If count decreased, reset queue to avoid ghost cards
     const previousCount = allCards.length;
     
-    // 2. Daten aktualisieren
+    // Update State
     allCards = cards;
     renderCardList();
     if(deckCountEl) deckCountEl.textContent = allCards.length;
 
-    // 3. CHECK: Wurde gelöscht? (Weniger Karten als vorher, aber vorher war nicht leer)
     if (allCards.length < previousCount && previousCount > 0) {
-        buildReviewQueue(); // Queue komplett neu bauen
-        showNextCard();     // Sofort anzeigen
-        return;             // Rest der Funktion überspringen (Injection nicht nötig)
+        buildReviewQueue();
+        showNextCard();
+        return;
     }
 
-    // --- Ab hier normale Logik für Hinzufügen/Updates ---
-
-    // 4. Queue bereinigen (Updates übernehmen)
+    // 2. Queue maintenance: Update existing queue items with new data
     if (reviewQueue.length > 0) {
         reviewQueue = reviewQueue
             .map(qCard => allCards.find(c => c.id === qCard.id))
             .filter(c => c !== undefined);
     }
 
-    // 5. Neue Karten injizieren (Nur Level 0, die noch nicht drin sind)
+    // 3. Inject New Cards (Level 0) into active queue
     const currentId = currentCard ? currentCard.id : null;
     const queueIds = new Set(reviewQueue.map(c => c.id));
     
@@ -420,13 +408,14 @@ function handleDataUpdate(cards) {
 
     if (newCards.length > 0) {
         newCards.forEach(c => {
+            // Add 9 copies for immediate learning
             for(let i=0; i<9; i++) reviewQueue.push(c);
         });
         shuffleArray(reviewQueue);
         if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
     }
 
-    // 6. Aktuelle Karte prüfen
+    // 4. Cack active card integrity
     if (currentCard) {
         const updatedCard = allCards.find(c => c.id === currentCard.id);
         if (!updatedCard) {
@@ -436,18 +425,23 @@ function handleDataUpdate(cards) {
         }
     }
 
-    // 7. Initialer Start / Leeres Deck Handling
+    // 5. Handle Start / Empty / Session Done states
     const isSessionDone = !currentCard && (reviewQueue.length > 0 || (allCards.length > 0 && reviewQueue.length === 0));
     
     if (isSessionDone) {
         if (reviewQueue.length === 0) buildReviewQueue();
         if (reviewQueue.length > 0) showNextCard();
     } else if (!currentCard && allCards.length === 0) {
-        // Deck komplett leer -> Empty State anzeigen
         showNextCard();
     }
 }
 
+/**
+ * Dynamically builds from inputs based on the selected template.
+ * @param {string} templateKey - e.g., 'standard', 'chinese' 
+ * @param {HTMLElement} containerElement - DOM element to append inputs to
+ * @param {string} idPrefix - Prefix for IDs (e.g., 'edit' or 'input-')
+ */
 function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
     const template = CardTemplates[templateKey] || CardTemplates['standard'];
     containerElement.innerHTML = ''; 
@@ -458,7 +452,6 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
 
         const label = document.createElement('label');
         label.className = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-        // NEU: Sternchen für Pflichtfelder
         label.textContent = t(field.label) + (field.required ? ' *' : '');
         label.setAttribute('for', `${idPrefix}${field.id}`); 
         wrapper.appendChild(label);
@@ -471,9 +464,8 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
         input.name = field.id; 
         input.id = `${idPrefix}${field.id}`;
         input.placeholder = t(field.placeholder);
-        input.maxLength = 500;
+        input.maxLength = 500;  // Limit input length
         
-        // NEU: HTML Required Attribut setzen
         if (field.required) {
             input.required = true;
         }
@@ -500,6 +492,9 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
     });
 }
 
+/**
+ * Handles adding a new card. validates required fields dynamically.
+ */
 async function handleAddCard(e) {
     e.preventDefault();
     const formData = new FormData(addCardForm);
@@ -511,17 +506,15 @@ async function handleAddCard(e) {
 
     const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
     
-    // NEU: Strikte Validierung aller Pflichtfelder
+    // Validate required fields
     for (const field of template.fields) {
         if (field.required) {
             const value = newCard[field.id];
-            // Prüfen ob leer
             if (!value || value.length === 0) {
                 await uiShowAlert(t('common.error'), `Bitte fülle das Feld "${t(field.label)}" aus.`);
-                // Fokus auf das fehlende Feld setzen
                 const el = document.getElementById(`input-${field.id}`);
                 if(el) el.focus();
-                return; // Abbrechen
+                return;
             }
         }
     }
@@ -534,7 +527,7 @@ async function handleAddCard(e) {
         await storageService.addCardToDeck(currentDeckId, newCard);
         addCardForm.reset();
         
-        // Fokus auf erstes Feld zurücksetzen für schnelle Eingabe
+        // Refocus first field for speed
         if(template.fields.length > 0) {
              const firstId = template.fields[0].id;
              setTimeout(() => {
@@ -548,15 +541,16 @@ async function handleAddCard(e) {
     }
 }
 
-// Clears all study-related state to prevent "ghost cards" from appearing in other decks
+/**
+ * Reset study state (queue, current card) when leaving a deck
+ */
 function resetStudyState() {
     currentCard = null;
     reviewQueue = [];
     currentDeckId = null;
     currentDeckType = 'standard';
-    allCards = []; // <--- NEU: Globalen Cache leeren
+    allCards = [];
     
-    // Clear UI
     if(cardFrontText) cardFrontText.innerHTML = '';
     if(cardBackContent) cardBackContent.innerHTML = '';
     
@@ -581,13 +575,14 @@ async function handleDeleteDeck() {
 }
 
 // --- Create Deck Logic ---
+
 function openCreateDeckModal() {
     templateSelect.innerHTML = '';
     
     Object.entries(CardTemplates).forEach(([key, tpl]) => {
         const option = document.createElement('option');
         option.value = key;
-        option.textContent = t(tpl.nameKey); // Übersetzung!
+        option.textContent = t(tpl.nameKey);
         templateSelect.appendChild(option);
     });
     
@@ -609,7 +604,7 @@ async function handleCreateDeckSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData(createDeckForm);
-    const title = formData.get('deckName').trim(); // Wichtig: trim()
+    const title = formData.get('deckName').trim();
     const type = formData.get('template');
 
     if (!title) {
@@ -617,13 +612,11 @@ async function handleCreateDeckSubmit(e) {
         return;
     }
 
-    // NEU: Duplikat-Check (Case-Insensitive)
-    // Wir prüfen in der lokalen Liste 'cachedDecks', ob der Name schon da ist
     const exists = cachedDecks.some(d => d.title.toLowerCase() === title.toLowerCase());
     
     if (exists) {
         await uiShowAlert(t('common.error'), t('msg.deckExists'));
-        return; // Abbrechen
+        return;
     }
 
     await storageService.createDeck(title, type);
@@ -638,7 +631,7 @@ async function handleCreateDeckSubmit(e) {
 function showNextCard() {
     resetCardState(); 
     
-    // FALL 1: Leeres Deck
+    // CASE 1: Empty deck
     if (!allCards || allCards.length === 0) {
         cardFrontText.innerHTML = `
             <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
@@ -654,7 +647,7 @@ function showNextCard() {
         return;
     }
 
-    // FALL 2: Runde fertig
+    // CASE 2: Session finished
     if (!reviewQueue || reviewQueue.length === 0) {
         cardFrontText.innerHTML = `
             <div class="flex flex-col items-center justify-center text-green-600 dark:text-green-400">
@@ -667,15 +660,14 @@ function showNextCard() {
         cardBackContent.innerHTML = ''; 
         showButton.style.display = 'none';
         currentCard = null;
-        
-        // buildReviewQueue(); 
         return;
     }
 
-    // ... (Rest der Funktion bleibt gleich) ...
+    // CASE 3: Show Card
     currentCard = reviewQueue.shift(); 
     if (!currentCard) { showNextCard(); return; }
     
+    // Apply Study Mode (Swap front/back if needed)
     let useReverse = false;
     if (currentStudyMode === 'reverse') { useReverse = true; }
     else if (currentStudyMode === 'random') { useReverse = Math.random() < 0.5; }
@@ -692,15 +684,23 @@ function showNextCard() {
     const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
     cardFrontText.innerHTML = template.renderFront(displayCard);
     renderMath(cardFrontText); 
+
     cardBackContent.innerHTML = '';
     const newBackContent = template.renderBack(displayCard);
+
+    // Delay back rendering to hide it during flip
     setTimeout(() => {
         cardBackContent.innerHTML = newBackContent;
         renderMath(cardBackContent); 
     }, 300);
+
     if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
 }
 
+/**
+ * Builds the weighted study queue using SRS logic.
+ * New Cards (Level 0) appear 9 times. Higher levels appear less frequently.
+ */
 function buildReviewQueue() {
     reviewQueue = [];
     
@@ -708,8 +708,6 @@ function buildReviewQueue() {
 
     allCards.forEach(card => {
         let count = 0;
-        // Regel 2: Gewichtung nach Level
-        // (Wichtig: Wir nehmen srsLevel || 0, falls undefined)
         const level = (typeof card.srsLevel === 'number') ? card.srsLevel : 0;
 
         switch (level) {
@@ -718,19 +716,16 @@ function buildReviewQueue() {
             case 2: count = 3; break; 
             case 3: count = 1; break;
             case 4: count = (Math.random() < 0.33) ? 1 : 0; break; 
-            default: count = 1; // Fallback für höhere Level (oder 0, wenn du willst)
+            default: count = 1;
         }
 
-        // Karten vervielfältigen und hinzufügen
         for (let i = 0; i < count; i++) {
             reviewQueue.push(card);
         }
     });
 
-    // Mischen (Regel 3)
     shuffleArray(reviewQueue);
     
-    // UI Update
     if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
 }
 
@@ -751,22 +746,15 @@ async function handleCardListActions(e) {
         if (cardToEdit) {
             currentEditCardId = cardId;
             
-            // 1. Formular aufbauen (passend zum aktuellen Deck-Typ!)
-            // Wir nutzen den Prefix 'edit-' damit die IDs eindeutig sind
             buildFormFields(currentDeckType, editDynamicFieldsContainer, 'edit-');
             
-            // 2. Werte einfüllen
-            // Wir gehen durch die Felder des Templates und suchen die passenden Inputs
             const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
             
             template.fields.forEach(field => {
                 const input = document.getElementById(`edit-${field.id}`);
                 if (input) {
-                    // Wert aus der Karte holen (z.B. cardToEdit.front)
-                    // Fallback auf leeren String
                     input.value = cardToEdit[field.id] || '';
-                    
-                    // Legacy Fallback (falls Karte noch alt ist und wir 'german' statt 'front' haben)
+                    // Legacy Fallback
                     if (!input.value) {
                         if (field.id === 'front') input.value = cardToEdit.german || '';
                         if (field.id === 'back') input.value = cardToEdit.chinese || '';
@@ -784,7 +772,6 @@ async function handleUpdateCard(e) {
     e.preventDefault();
     if (!currentEditCardId || !currentDeckId) return;
 
-    // 1. Daten dynamisch aus dem Formular holen
     const formData = new FormData(editCardForm);
     const updatedData = {};
 
@@ -794,7 +781,7 @@ async function handleUpdateCard(e) {
 
     const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
     
-    // Validierung
+    // Validate
     for (const field of template.fields) {
         if (field.required) {
             const value = updatedData[field.id];
@@ -805,9 +792,6 @@ async function handleUpdateCard(e) {
         }
     }
 
-    // Validierung (optional: prüfen ob Pflichtfelder da sind)
-    // ...
-
     try {
         await storageService.updateCard(currentDeckId, currentEditCardId, updatedData);
         closeEditModal();
@@ -817,6 +801,10 @@ async function handleUpdateCard(e) {
     }
 }
 
+/**
+ * Processes user feedback (Right/Wrong).
+ * Updates SRS Level and resets queue if wrong.
+ */
 async function handleFeedback(wasCorrect) {
     if (!currentCard || !currentDeckId) return;
 
@@ -824,28 +812,19 @@ async function handleFeedback(wasCorrect) {
     let consecutiveCorrect = (typeof currentCard.consecutiveCorrect === 'number') ? currentCard.consecutiveCorrect : 0;
 
     if (wasCorrect) {
-        // --- RICHTIG BEANTWORTET (Regel 4) ---
         consecutiveCorrect++;
         if (consecutiveCorrect >= 3 && srsLevel < 4) {
             srsLevel++;
             consecutiveCorrect = 0; 
         }
         
-        // WICHTIG: Wir machen NICHTS mit der Queue.
-        // Die aktuelle Karte wurde durch 'reviewQueue.shift()' in 'showNextCard' 
-        // bereits aus der Queue entfernt.
-        // Wenn noch 8 weitere Kopien drin sind, bleiben die drin.
-        // Die Queue wird NICHT gemischt.
-        
     } else {
-        // --- FALSCH BEANTWORTET (Regel 5) ---
         consecutiveCorrect = 0;
         if (srsLevel > 0) {
             srsLevel--;
         }
     }
 
-    // Speichern in DB
     try {
         await storageService.updateCard(currentDeckId, currentCard.id, { 
             srsLevel: srsLevel, 
@@ -855,14 +834,9 @@ async function handleFeedback(wasCorrect) {
         console.error("Fehler beim Speichern:", error);
     }
 
-    // Wenn FALSCH -> Queue komplett neu aufbauen (Regel 5)
-    // Hinweis: Wir machen das NACH dem Speichern, damit buildReviewQueue 
-    // die neuen (schlechteren) Level der Karte berücksichtigt.
+    // If WRONG: Rebuild queue to reinforce learning
     if (!wasCorrect) {
-        // Da DB Update asynchron ist und wir lokal 'allCards' noch nicht geupdated haben 
-        // (passiert erst durch onSnapshot callback), müssen wir manuell patchen,
-        // sonst baut buildReviewQueue mit alten Daten.
-        
+        // Manually update local ref because snapshot is async
         const localCardRef = allCards.find(c => c.id === currentCard.id);
         if (localCardRef) {
             localCardRef.srsLevel = srsLevel;
@@ -872,10 +846,7 @@ async function handleFeedback(wasCorrect) {
         buildReviewQueue(); 
     }
 
-    // Nächste Karte
     if (reviewQueue.length === 0) {
-        // Falls durch "Richtig" die letzte Karte weg ist
-        // ODER durch "Falsch" rebuild gemacht wurde (sollte eigentlich nicht leer sein, außer Deck ist leer)
         buildReviewQueue();
     }
     
@@ -890,6 +861,9 @@ function handlePinyinConvert() {
     inputExtra.value = convertPinyinTones(pinyinText);
 }
 
+/**
+ * Live Pinyin conversion on Space key press
+ */
 function handlePinyinKeyup(e) {
     if (e.key === ' ' || e.code === 'Space') {
         const input = e.target;
@@ -930,29 +904,34 @@ async function handleSyncLocalToCloud() {
     }
 }
 
+/**
+ * Switches the UI to Dashboard view.
+ * Resets study state, stops listeners, and refreshes the deck list.
+ */
 function showDashboard() {
     dashboardView.classList.remove('hidden');
     studyView.classList.add('hidden');
     
-    // Reset Header Title
     document.querySelector('h1').textContent = 'OmniCards';
 
-    // --- Clean up old study session data ---
     resetStudyState(); 
-    // --------------------------------------------
-    
-    // Stop Card Listener
+
+    // Stop expensive card listener when leaving the deck
     if (unsubscribeCards) {
         unsubscribeCards();
         unsubscribeCards = null;
     }
     
-    // Start Deck Listener (if not running)
+    // Subscribe to deck list if not already running
     if (!unsubscribeDecks && storageService.subscribeDecks) {
         unsubscribeDecks = storageService.subscribeDecks(renderDeckList);
     }
 }
 
+/**
+ * Switches UI to Study view for a specific deck.
+ * Loads the appropriate template form and starts the card listener.
+ */
 function showStudyView(deckId, deckTitle, deckType = 'standard') {
     resetStudyState();
 
@@ -969,15 +948,21 @@ function showStudyView(deckId, deckTitle, deckType = 'standard') {
 
     document.querySelector('h1').textContent = deckTitle;
     
+    // Start realtime Listener for cards
     if (storageService.subscribeCards) {
         unsubscribeCards = storageService.subscribeCards(deckId, handleDataUpdate);
     }
 }
 
+/**
+ * Renders the list of private decks in the dashboard.
+ * @param {Array} decks
+ */
 function renderDeckList(decks) {
     cachedDecks = decks;
     deckListContainer.innerHTML = '';
 
+    // create a copy to sort without mutating the original array
     const sortedDecks = [...decks].sort((a, b) => {
         switch (currentDeckSort) {
             case 'name':
@@ -990,11 +975,8 @@ function renderDeckList(decks) {
                 return (b.createdAt || '').localeCompare(a.createdAt || '');
             case 'lastLearned':
             default:
-                // Fallback: Wenn noch nie gelernt, behandeln wir es als ganz alt ('')
                 const dateA = a.lastLearnedAt || '';
                 const dateB = b.lastLearnedAt || '';
-                // Absteigend sortieren (neuestes Datum zuerst)
-                // Wenn Datum gleich ist, fallback auf Name
                 if (dateB === dateA) return a.title.localeCompare(b.title);
                 return dateB.localeCompare(dateA);
         }
@@ -1030,6 +1012,7 @@ function renderDeckList(decks) {
              }
         });
 
+        // Publish Button logic
         const shareBtn = div.querySelector('.share-btn');
         shareBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
@@ -1050,8 +1033,11 @@ function renderDeckList(decks) {
     });
 }
 
+/**
+ * Handles Tab Switching (My Decks vs. Community)
+ * @param {string} tab - 'my-decks' or 'community'
+ */
 function switchTab(tab) {
-    // Definition der Klassen für aktiven und inaktiven Zustand (inkl. Dark Mode)
     const activeClasses = [
         'text-blue-600', 'dark:text-blue-400', 
         'font-bold', 
@@ -1064,46 +1050,33 @@ function switchTab(tab) {
     ];
 
     if (tab === 'my-decks') {
-        // 1. Meine Decks -> AKTIV
         tabMyDecks.classList.add(...activeClasses);
         tabMyDecks.classList.remove(...inactiveClasses);
-
-        // 2. Community -> INAKTIV
         tabCommunity.classList.remove(...activeClasses);
         tabCommunity.classList.add(...inactiveClasses);
-        
-        // 3. Views umschalten
         myDecksSection.classList.remove('hidden');
         communitySection.classList.add('hidden');
     } else {
-        // 1. Community -> AKTIV
         tabCommunity.classList.add(...activeClasses);
         tabCommunity.classList.remove(...inactiveClasses);
-
-        // 2. Meine Decks -> INAKTIV
         tabMyDecks.classList.remove(...activeClasses);
         tabMyDecks.classList.add(...inactiveClasses);
-
-        // 3. Views umschalten
         myDecksSection.classList.add('hidden');
         communitySection.classList.remove('hidden');
-        
-        // Daten laden
         loadPublicDecks();
     }
 }
 
 function loadPublicDecks() {
     if (unsubscribeDecks && storageService.subscribePublicDecks) {
-        // Wir nutzen den Listener, um die Daten aktuell zu halten
         storageService.subscribePublicDecks((decks) => {
-            allPublicDecks = decks; // Speichern
-            renderPublicDeckList(); // Anzeigen (mit aktuellem Filter)
+            allPublicDecks = decks;
+            renderPublicDeckList();
         });
     }
 }
 
-// Utils
+// Visual Helpers
 function flipCard() {
     cardInner.classList.add('is-flipped');
     showButton.style.display = 'none';
@@ -1134,16 +1107,18 @@ function getLevelColorClass(srsLevel, consecutiveCorrect) {
     }
 }
 
+/**
+ * Renders the table list of all cards in the current deck.
+ * Handles sorting, truncating long text, and displaying SRS stats.
+ */
 function renderCardList() {
     cardListBody.innerHTML = ''; 
     const sortedCards = [...allCards]; 
     
-    // ... Sortierlogik hier (vereinfacht für Übersicht) ...
+    // Sorting Logic
     const { column, direction } = currentSort;
     sortedCards.sort((a, b) => {
         let valA, valB;
-
-        // Werte basierend auf Spalte holen (mit Fallbacks für alte Daten)
         switch (column) {
             case 'front':
                 valA = (a.front || '').toLowerCase();
@@ -1158,7 +1133,7 @@ function renderCardList() {
                 valB = (b.extra || '').toLowerCase();
                 break;
             case 'level':
-                // Bei Level sortieren wir erst nach Level, dann nach Success-Count
+                // Numerical sort for levels, then streak
                 if (a.srsLevel !== b.srsLevel) {
                     return direction === 'asc' ? a.srsLevel - b.srsLevel : b.srsLevel - a.srsLevel;
                 }
@@ -1168,7 +1143,6 @@ function renderCardList() {
                 valB = (b[column] || '').toString().toLowerCase();
         }
 
-        // String Vergleich für Text-Spalten
         if (valA < valB) return direction === 'asc' ? -1 : 1;
         if (valA > valB) return direction === 'asc' ? 1 : -1;
         return 0;
@@ -1186,13 +1160,12 @@ function renderCardList() {
         const tr = document.createElement('tr');
         tr.className = `${colorClass} transition-colors duration-300`; 
         
+        // Fallbacks for display
         const displayFront = card.front || card.german || '?';
         const displayBack = card.back || card.chinese || '?';
         const displayExtra = card.extra || card.note || card.pinyin || '';
 
-        // NEU: Wir packen den Inhalt in ein Div mit line-clamp-2
-        // 'break-words' sorgt dafür, dass lange Wörter ohne Leerzeichen umbrechen
-        // 'min-w-[150px]' gibt der Spalte eine Mindestbreite, damit sie nicht kollabiert
+        // CSS class for truncating text (3 lines max)
         const cellClass = "line-clamp-2 overflow-hidden break-words max-w-[200px] max-h-[3em]";
 
         tr.innerHTML = `
@@ -1253,6 +1226,9 @@ function handleSortClick(e) {
     renderCardList();
 }
 
+/**
+ * Builds and display the "Current Queue" modal.
+ */
 function buildAndShowQueueModal() {
     if (!reviewQueue || reviewQueue.length === 0) {
         queueListContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Warteschlange leer.</p>';
@@ -1274,8 +1250,9 @@ function handleRebuildQueue() {
     showNextCard();
 }
 
+// --- Theme Logic ---
+
 function initTheme() {
-    // Prüfen ob gespeichert oder System-Einstellung
     const savedTheme = localStorage.getItem('omniCardsTheme');
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
@@ -1296,30 +1273,24 @@ function toggleDarkMode() {
 
 function updateDarkModeToggleUI(isDark) {
     if (!darkModeToggle || !darkModeKnob) return;
-    // Einfache UI Logik für den Toggle
     if (isDark) {
-        // Knob nach rechts
         darkModeKnob.classList.add('translate-x-6');
         darkModeKnob.classList.remove('translate-x-1');
-        // Hintergrund Blau
         darkModeToggle.classList.add('bg-blue-600');
         darkModeToggle.classList.remove('bg-gray-200');
     } else {
-        // Knob nach links
         darkModeKnob.classList.add('translate-x-1');
         darkModeKnob.classList.remove('translate-x-6');
-        // Hintergrund Grau
         darkModeToggle.classList.add('bg-gray-200');
         darkModeToggle.classList.remove('bg-blue-600');
     }
 }
 
-// --- Preview Logic ---
+// --- Preview Logic & Marketplace Logic ---
 
 async function openPreviewModal(deck) {
     currentPreviewDeckId = deck.id;
     
-    // 1. UI Reset & Öffnen
     previewTitle.textContent = deck.title;
     previewMeta.textContent = `${t('comm.createdBy')} ${deck.originalAuthor} • ${deck.type} • ${deck.cardCount} ${t('common.cards')}`;
     previewCardsList.innerHTML = `<p class="text-gray-500 dark:text-gray-400 italic">${t('comm.loading')}</p>`;
@@ -1327,50 +1298,56 @@ async function openPreviewModal(deck) {
     previewModal.classList.remove('opacity-0', 'pointer-events-none');
     previewModal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
 
-    // 2. Daten laden
     try {
         const sampleCards = await storageService.getPublicDeckPreview(deck.id);
-        renderPreviewCards(sampleCards, deck.type);
+        renderPreviewCards(sampleCards, deck.type, deck.cardCount);
     } catch (err) {
         console.error(err);
         previewCardsList.innerHTML = '<p class="text-red-500">Fehler beim Laden der Vorschau.</p>';
     }
 }
 
-function renderPreviewCards(cards, deckType) {
+function renderPreviewCards(cards, deckType, totalCount = 0) {
     previewCardsList.innerHTML = '';
     
     if (cards.length === 0) {
         previewCardsList.innerHTML = `<p class="text-gray-500">${t('comm.emptyDeck')}</p>`;
         return;
     }
-
+    // Reuse template logic for preview (safely)
     const template = CardTemplates[deckType] || CardTemplates['standard'];
 
     cards.forEach(card => {
         const div = document.createElement('div');
-        div.className = "p-3 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex flex-col sm:flex-row gap-2 sm:items-center justify-between";
+        div.className = "p-3 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 grid grid-cols-1 sm:grid-cols-[1fr,auto,1fr] gap-1 sm:gap-4 items-center";
         
-        // Wir nutzen einfache Text-Darstellung statt komplexem HTML-Render für die Liste
-        // Aber wir nutzen die Template-Felderlogik um die richtigen Daten zu greifen
-        // Da templates.js renderFront HTML zurückgibt, ist es sicherer, direkt auf die Daten zuzugreifen.
-        
-        // Einfacher Fallback für Preview:
+        // Legacy Fallbacks
         const front = card.front || card.german || '?';
         const back = card.back || card.chinese || '?';
         
         div.innerHTML = `
-            <div class="font-medium text-gray-800 dark:text-gray-200 truncate w-full sm:w-1/2">${front}</div>
-            <div class="text-gray-600 dark:text-gray-400 truncate w-full sm:w-1/2 sm:text-right">➔ ${back}</div>
+            <div class="font-medium text-gray-800 dark:text-gray-200 truncate text-center sm:text-left w-full" title="${front.replace(/"/g, '&quot;')}">
+                ${front}
+            </div>
+
+            <div class="text-gray-400 dark:text-gray-500 text-center text-sm">
+                <span class="hidden sm:inline">➔</span>
+                <span class="sm:hidden">↓</span>
+            </div>
+
+            <div class="text-gray-600 dark:text-gray-400 truncate text-center sm:text-right w-full" title="${back.replace(/"/g, '&quot;')}">
+                ${back}
+            </div>
         `;
         previewCardsList.appendChild(div);
     });
     
-    // Info, dass es nur ein Auszug ist
-    const info = document.createElement('p');
-    info.className = "text-xs text-center text-gray-400 mt-2";
-    info.textContent = `${t('comm.moreExamples')}`;
-    previewCardsList.appendChild(info);
+    if (totalCount > cards.length) {
+        const info = document.createElement('p');
+        info.className = "text-xs text-center text-gray-400 mt-2 italic";
+        info.textContent = t('comm.moreExamples'); 
+        previewCardsList.appendChild(info);
+    }
 }
 
 function closePreviewModal() {
@@ -1382,7 +1359,6 @@ function closePreviewModal() {
 async function handlePreviewImport() {
     if (!currentPreviewDeckId) return;
     
-    // Button Loading State
     const originalText = previewImportBtn.textContent;
     previewImportBtn.textContent = t('btn.importing');
     previewImportBtn.disabled = true;
@@ -1390,7 +1366,7 @@ async function handlePreviewImport() {
     try {
         await storageService.importDeck(currentPreviewDeckId);
         closePreviewModal();
-        await uiShowAlert(t('common.success'), t('msg.deckImported')); // Hier ist Feedback gut
+        await uiShowAlert(t('common.success'), t('msg.deckImported'));
         switchTab('my-decks');
     } catch (err) {
         console.error(err);
@@ -1401,7 +1377,7 @@ async function handlePreviewImport() {
     }
 }
 
-// --- Modal Helpers ---
+// --- Modal Visibility Helpers ---
 function openModal() { settingsModal.classList.remove('opacity-0', 'pointer-events-none'); modalContent.classList.remove('scale-95', 'opacity-0'); }
 function closeModal() { settingsModal.classList.add('opacity-0', 'pointer-events-none'); modalContent.classList.add('scale-95', 'opacity-0'); }
 function openEditModal() { editCardModal.classList.remove('opacity-0', 'pointer-events-none'); editModalContent.classList.remove('scale-95', 'opacity-0'); }
@@ -1409,25 +1385,27 @@ function closeEditModal() { editCardModal.classList.add('opacity-0', 'pointer-ev
 function openQueueModal() { queueModal.classList.remove('opacity-0', 'pointer-events-none'); queueModalContent.classList.remove('scale-95', 'opacity-0'); }
 function closeQueueModal() { queueModal.classList.add('opacity-0', 'pointer-events-none'); queueModalContent.classList.add('scale-95', 'opacity-0'); }
 
+/**
+ * Renders the Marketplace list. Handles Search, Filter, and Sorting.
+ * @returns 
+ */
 function renderPublicDeckList() {
     publicDeckListContainer.innerHTML = '';
     
-    // 1. Inputs lesen
+    // 1. Get Filters
     const searchTerm = publicSearchInput ? publicSearchInput.value.toLowerCase().trim() : '';
     const filterMode = publicFilterSelect ? publicFilterSelect.value : 'all'; // 'all', 'mine', 'others'
     
-    // 2. Filtern
+    // 2. Filter Array
     let filteredDecks = allPublicDecks.filter(deck => {
         const isMyDeck = currentUser && deck.originalAuthorId === currentUser.uid;
 
-        // A. Text-Suche
         const matchesSearch = !searchTerm || (
             (deck.title || '').toLowerCase().includes(searchTerm) ||
             (deck.originalAuthor || '').toLowerCase().includes(searchTerm) ||
             (deck.type || '').toLowerCase().includes(searchTerm)
         );
 
-        // B. Besitz-Filter
         let matchesFilter = true;
         if (filterMode === 'mine') matchesFilter = isMyDeck;
         if (filterMode === 'others') matchesFilter = !isMyDeck;
@@ -1435,7 +1413,7 @@ function renderPublicDeckList() {
         return matchesSearch && matchesFilter;
     });
 
-    // 3. Sortieren (unverändert)
+    // 3. Sort Array
     const sortMode = publicSortSelect ? publicSortSelect.value : 'newest';
     filteredDecks.sort((a, b) => {
         switch (sortMode) {
@@ -1446,19 +1424,17 @@ function renderPublicDeckList() {
         }
     });
 
-    // 4. Empty State
     if (filteredDecks.length === 0) {
         publicDeckListContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 col-span-full text-center py-8">Keine Decks gefunden.</p>';
         return;
     }
 
-    // 5. Rendern
+    // 4. Render Items
     filteredDecks.forEach(deck => {
         const div = document.createElement('div');
         const isMyDeck = currentUser && deck.originalAuthorId === currentUser.uid;
 
-        // VISUELLE TRENNUNG:
-        // Eigene Decks bekommen einen blauen Rand, fremde Decks einen grauen.
+        // Visual distinction for own decks
         const borderClass = isMyDeck 
             ? "border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900" 
             : "border-gray-200 dark:border-gray-700";
@@ -1468,7 +1444,6 @@ function renderPublicDeckList() {
         let actionBtnHtml = '';
         
         if (isMyDeck) {
-            // Fall 1: Mein Deck -> Vorschau, Löschen UND Importieren (NEU)
             actionBtnHtml = `
                 <div class="flex space-x-2">
                     <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.preview')}" data-id="${deck.id}">
@@ -1482,7 +1457,6 @@ function renderPublicDeckList() {
                     </button>
                 </div>`;
         } else {
-            // Fall 2: Fremdes Deck -> Vorschau UND Importieren
             actionBtnHtml = `
                 <div class="flex space-x-2">
                     <button class="preview-btn bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 px-3 py-1 rounded text-sm font-medium transition" title="${t('btn.preview')}" data-id="${deck.id}">
@@ -1516,11 +1490,7 @@ function renderPublicDeckList() {
             </div>
         `;
 
-        publicDeckListContainer.appendChild(div);
-
-        // --- EVENT LISTENER (Bereinigt) ---
-
-        // 1. VORSCHAU (Für alle)
+        // Event Listeners for Dynamic Buttons
         const previewBtn = div.querySelector('.preview-btn');
         if (previewBtn) {
             previewBtn.addEventListener('click', (e) => {
@@ -1529,14 +1499,12 @@ function renderPublicDeckList() {
             });
         }
 
-        // 2. IMPORTIEREN (NEU: Für alle verfügbar!)
         const importBtn = div.querySelector('.import-btn');
         if (importBtn) {
             importBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                // Kleiner Text-Unterschied: Bei mir selbst ist es eher ein "Duplizieren"
                 const msg = isMyDeck 
-                    ? `Möchtest du dein eigenes Deck "${deck.title}" importieren (duplizieren)?` // Optional übersetzen
+                    ? `Möchtest du dein eigenes Deck "${deck.title}" importieren (duplizieren)?`
                     : t('dialog.import.msg', {title: deck.title});
 
                 const confirmed = await uiShowConfirm(t('dialog.import.title'), msg);
@@ -1554,7 +1522,6 @@ function renderPublicDeckList() {
             });
         }
 
-        // 3. LÖSCHEN (Nur für mich)
         if (isMyDeck) {
             div.querySelector('.delete-public-btn').addEventListener('click', async (e) => {
                 e.stopPropagation();
@@ -1571,28 +1538,24 @@ function renderPublicDeckList() {
                 }
             });
         }
+
+        publicDeckListContainer.appendChild(div);
     });
 }
 
 function updateSortIndicators() {
-    // 1. Alle Header mit Sortier-Funktion suchen
     const headers = document.querySelectorAll('th[data-sort]');
     
     headers.forEach(th => {
         const column = th.dataset.sort;
         const indicator = th.querySelector('.sort-indicator');
         
-        // Prüfen: Ist das die aktuelle Spalte?
         if (column === currentSort.column) {
-            // Pfeil setzen
             indicator.textContent = currentSort.direction === 'asc' ? ' ▲' : ' ▼';
-            // Optional: Farbe hervorheben (aktive Spalte)
             th.classList.add('text-blue-600', 'dark:text-blue-400');
             th.classList.remove('text-gray-500', 'dark:text-gray-300');
         } else {
-            // Pfeil entfernen
             indicator.textContent = '';
-            // Farbe zurücksetzen
             th.classList.remove('text-blue-600', 'dark:text-blue-400');
             th.classList.add('text-gray-500', 'dark:text-gray-300');
         }
@@ -1604,7 +1567,6 @@ function updateTableHeaders(deckType) {
 
     const template = CardTemplates[deckType] || CardTemplates['standard'];
     
-    // NEU: Index Header übersetzen? Oder '#' lassen.
     let html = `<th class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>`;
 
     const sortKeys = ['front', 'back', 'extra'];
@@ -1619,7 +1581,6 @@ function updateTableHeaders(deckType) {
         `;
     });
 
-    // NEU: Level & Actions Header übersetzen
     html += `
         <th data-sort="level" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-white">
             ${t('table.level')} <span class="sort-indicator"></span>
@@ -1631,23 +1592,26 @@ function updateTableHeaders(deckType) {
 }
 
 // --- Custom Dialog System (Alert/Confirm/Prompt Replacement) ---
+
+/**
+ * Internal logic to show the global modal with specific configuration.
+ * @returns {Promise} Resolves when user clicks OK/Cancel
+ */
 function openDialog(title, message, type = 'alert', placeholder = '') {
     return new Promise((resolve) => {
         dialogResolve = resolve;
 
-        // 1. Content setzen
         dialogTitle.textContent = title;
         dialogMessage.textContent = message;
         dialogInput.value = '';
 
-        // 2. UI anpassen je nach Typ
         dialogInputContainer.classList.add('hidden');
         dialogCancelBtn.classList.remove('hidden');
         dialogConfirmBtn.className = "px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow-sm font-medium"; // Reset styles
         dialogConfirmBtn.textContent = "OK";
 
         if (type === 'alert') {
-            dialogCancelBtn.classList.add('hidden'); // Alert hat kein Cancel
+            dialogCancelBtn.classList.add('hidden');
         } else if (type === 'confirm-danger') {
             dialogConfirmBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
             dialogConfirmBtn.classList.add('bg-red-600', 'hover:bg-red-700');
@@ -1658,7 +1622,6 @@ function openDialog(title, message, type = 'alert', placeholder = '') {
             dialogConfirmBtn.textContent = "Speichern";
         }
 
-        // 3. Anzeigen
         dialogModal.classList.remove('opacity-0', 'pointer-events-none');
         dialogModal.querySelector('.modal-content').classList.remove('scale-95');
         
@@ -1676,25 +1639,21 @@ function closeDialog(result) {
     }
 }
 
-// Event Listeners für Dialog (Einmalig registrieren!)
 if(dialogConfirmBtn) {
     dialogConfirmBtn.addEventListener('click', () => {
-        // Bei Prompt den Text zurückgeben, sonst true
         const value = (!dialogInputContainer.classList.contains('hidden')) ? dialogInput.value : true;
         closeDialog(value);
     });
 }
 if(dialogCancelBtn) {
-    dialogCancelBtn.addEventListener('click', () => closeDialog(false)); // Cancel = false
+    dialogCancelBtn.addEventListener('click', () => closeDialog(false));
 }
-// Enter im Input bestätigt auch
 if(dialogInput) {
     dialogInput.addEventListener('keyup', (e) => {
         if (e.key === 'Enter') dialogConfirmBtn.click();
     });
 }
 
-// Wrapper Functions for easier usage
 async function uiShowAlert(title, message) {
     await openDialog(title, message, 'alert');
 }
