@@ -4,7 +4,6 @@
 .card-inner {
     transition: transform 0.6s;
     transform-style: preserve-3d;
-    /* WICHTIG: Keine feste Höhe hier! */
 }
 
 .is-flipped { transform: rotateY(180deg); }
@@ -14,10 +13,8 @@
     backface-visibility: hidden;
 }
 
-/* Wir definieren hier keine .card-front oder .card-back Styles mehr für Positionierung.
-   Das wird alles über Tailwind Klassen (Grid) im HTML geregelt. */
-
-body { font-family: 'Inter', sans-serif; }
+/* WICHTIG: Die body-Font Regel wurde entfernt, damit Quicksand (Tailwind) greifen kann! */
+/* body { font-family: 'Inter', sans-serif; } <-- GELÖSCHT */
 
 /* Styles for Settings Modal Transition */
 .modal { transition: opacity 0.25s ease; }
