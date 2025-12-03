@@ -49,6 +49,10 @@ let selectedCardIds = new Set();
 
 let currentStudyExtra = 'back';
 
+let cachedFolders = []; 
+let currentFolderId = null; // null = Root
+let unsubscribeFolders = null;
+
 // --- DOM Elements ---
 
 const appContainer = document.getElementById('app-container');
@@ -65,6 +69,7 @@ const deckCountEl = document.getElementById('deck-count');
 const deleteDeckBtn = document.getElementById('delete-deck-btn');
 const renameDeckBtn = document.getElementById('rename-deck-btn');
 const deckSortSelect = document.getElementById('deck-sort-select');
+const folderNavControls = document.getElementById('folder-nav-controls');
 
 // Tabs
 const tabMyDecks = document.getElementById('tab-my-decks');
@@ -162,6 +167,10 @@ const dialogInputContainer = document.getElementById('dialog-input-container');
 const dialogInput = document.getElementById('dialog-input');
 const dialogConfirmBtn = document.getElementById('dialog-confirm-btn');
 const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
+
+const breadcrumbsContainer = document.getElementById('breadcrumbs');
+const createFolderBtn = document.getElementById('create-folder-btn');
+const MAX_FOLDER_DEPTH = 10;
 
 
 // --- Initialization ---
@@ -362,6 +371,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (headerCardList) {
         headerCardList.addEventListener('click', () => toggleSection(contentCardList, iconCardList, 'omni_ui_list_open'));
     }
+
+    if (createFolderBtn) createFolderBtn.addEventListener('click', handleCreateFolder);
 });
 
 
@@ -682,7 +693,7 @@ async function handleCreateDeckSubmit(e) {
         return;
     }
 
-    await storageService.createDeck(title, type);
+    await storageService.createDeck(title, type, currentFolderId);
     
     createDeckModal.classList.add('opacity-0', 'pointer-events-none');
     createDeckForm.reset();
@@ -903,6 +914,218 @@ async function handleFeedback(wasCorrect) {
 
 // --- Helper Functions ---
 
+function getFolderDepth(folderId) {
+    if (!folderId) return 0;
+    const folder = cachedFolders.find(f => f.id === folderId);
+    return folder ? 1 + getFolderDepth(folder.parentId) : 0;
+}
+
+// Nav Controls
+function renderFolderNavigation() {
+    if (!folderNavControls) return;
+    folderNavControls.innerHTML = '';
+
+    if (!currentFolderId) {
+        // Wir sind im Root -> Keine Buttons anzeigen
+        folderNavControls.classList.add('hidden');
+        return;
+    }
+
+    folderNavControls.classList.remove('hidden');
+
+    // 1. BACK BUTTON (Eine Ebene hoch)
+    const btnBack = document.createElement('button');
+    btnBack.className = "px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm font-medium";
+    btnBack.textContent = t('nav.back');
+    btnBack.onclick = () => {
+        // Parent ID finden
+        const currentFolder = cachedFolders.find(f => f.id === currentFolderId);
+        if (currentFolder) {
+            currentFolderId = currentFolder.parentId || null; // Wenn parentId undefiniert/null, gehe zu Root
+            renderDeckList();
+        } else {
+            // Fallback: Zu Root
+            currentFolderId = null;
+            renderDeckList();
+        }
+    };
+
+    // 2. ROOT BUTTON (Direkt zum Start)
+    const btnRoot = document.createElement('button');
+    btnRoot.className = "px-3 py-1.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition shadow-sm";
+    btnRoot.textContent = t('nav.root');
+    btnRoot.onclick = () => {
+        currentFolderId = null;
+        renderDeckList();
+    };
+
+    folderNavControls.appendChild(btnBack);
+    folderNavControls.appendChild(btnRoot);
+}
+
+function renderBreadcrumbs() {
+    if (!breadcrumbsContainer) return;
+    breadcrumbsContainer.innerHTML = '';
+
+    // "Home" immer da
+    const homeSpan = document.createElement('span');
+    homeSpan.className = "cursor-pointer hover:underline font-bold " + (currentFolderId === null ? "text-gray-800 dark:text-gray-200" : "");
+    homeSpan.textContent = "Home";
+    homeSpan.onclick = () => { currentFolderId = null; renderDeckList(); };
+    breadcrumbsContainer.appendChild(homeSpan);
+
+    if (currentFolderId) {
+        // Pfad rekonstruieren (rekursiv nach oben)
+        const path = [];
+        let curr = cachedFolders.find(f => f.id === currentFolderId);
+        while (curr) {
+            path.unshift(curr);
+            curr = cachedFolders.find(f => f.id === curr.parentId);
+        }
+
+        path.forEach((folder, index) => {
+            const sep = document.createElement('span');
+            sep.className = "mx-2";
+            sep.textContent = ">";
+            breadcrumbsContainer.appendChild(sep);
+
+            const span = document.createElement('span');
+            span.textContent = folder.title;
+            
+            // Letztes Element ist nicht klickbar (aktueller Ort)
+            if (index === path.length - 1) {
+                span.className = "font-bold text-gray-800 dark:text-gray-200";
+            } else {
+                span.className = "cursor-pointer hover:underline";
+                span.onclick = () => { currentFolderId = folder.id; renderDeckList(); };
+            }
+            breadcrumbsContainer.appendChild(span);
+        });
+    }
+}
+
+async function handleCreateFolder() {
+    // 1. Check Hardcap
+    const currentDepth = getFolderDepth(currentFolderId);
+    if (currentDepth >= MAX_FOLDER_DEPTH) {
+        await uiShowAlert(t('common.error'), t('error.maxDepth'));
+        return;
+    }
+
+    // 2. Normaler Flow
+    const name = await uiShowPrompt(t('dialog.newFolder.title'), t('dialog.newFolder.msg'));
+    if (name && name.trim()) {
+        try {
+            await storageService.createFolder(name.trim(), currentFolderId);
+        } catch (e) {
+            uiShowAlert(t('common.error'), e.message);
+        }
+    }
+}
+
+async function handleMoveItem(itemId, isFolder) {
+    // 1. Rekursive Liste bauen (wie zuvor)
+    const buildTargetList = (parentId = null, depth = 0, list = []) => {
+        const children = cachedFolders.filter(f => f.parentId === parentId);
+        children.sort((a, b) => a.title.localeCompare(b.title));
+
+        children.forEach(folder => {
+            // Zirkelbezug verhindern: Ordner kann nicht in sich selbst verschoben werden
+            if (isFolder) {
+                if (folder.id === itemId) return; 
+            }
+            list.push({ ...folder, depth });
+            buildTargetList(folder.id, depth + 1, list);
+        });
+        return list;
+    };
+
+    // 2. Liste filtern und vorbereiten
+    let orderedFolders = buildTargetList(null, 0);
+
+    // Filter: Wenn Ordner verschoben wird, descandents entfernen (einfacher Check gegen Zirkelbezug via ID)
+    if (isFolder) {
+        const getDescendantIds = (rootId) => {
+            let ids = [rootId];
+            const children = cachedFolders.filter(f => f.parentId === rootId);
+            children.forEach(c => ids = ids.concat(getDescendantIds(c.id)));
+            return ids;
+        };
+        const invalidIds = new Set(getDescendantIds(itemId));
+        orderedFolders = orderedFolders.filter(f => !invalidIds.has(f.id));
+    }
+
+    const rootOption = { id: 'root', title: t('folder.root'), depth: 0, isRoot: true };
+    const finalTargets = [rootOption, ...orderedFolders];
+    
+    // 3. HTML generieren
+    let html = `<div class="flex flex-col gap-1 mt-4 max-h-[60vh] overflow-y-auto pr-1">`;
+    
+    finalTargets.forEach(tgt => {
+        // Hardcap Check:
+        // Wenn wir einen ORDNER verschieben, darf das Ziel nicht >= MAX_DEPTH sein.
+        // (Decks dürfen theoretisch tiefer liegen, aber für UX Konsistenz sperren wir es hier auch oft, 
+        //  aber laut Anforderung geht es primär um "10 Unterordner erstellen". 
+        //  Wir sperren das Ziel nur, wenn 'isFolder' true ist, um nesting zu verhindern.)
+        const isDisabled = isFolder && tgt.depth >= MAX_FOLDER_DEPTH - 1;
+        
+        const indent = tgt.isRoot ? 0 : (tgt.depth * 1.5) + 0.5; 
+        const prefix = tgt.depth > 0 && !tgt.isRoot ? `<span class="text-gray-300 dark:text-gray-600 mr-1">└─</span>` : '';
+        const icon = tgt.isRoot ? '⌂' : '📁';
+        
+        // Styles für disabled state
+        const baseClass = "move-target-btn w-full text-left py-2 px-3 rounded border transition flex items-center gap-2 group";
+        const stateClass = isDisabled 
+            ? "bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700 cursor-not-allowed opacity-50" 
+            : "hover:bg-blue-50 dark:hover:bg-gray-700 border-gray-200 dark:border-gray-600 cursor-pointer";
+
+        const iconColor = tgt.isRoot ? 'text-gray-500' : 'text-yellow-500';
+        const titleColor = isDisabled ? "text-gray-400" : "text-gray-700 dark:text-gray-200";
+
+        html += `
+        <button class="${baseClass} ${stateClass}" 
+                style="padding-left: ${tgt.isRoot ? '0.75rem' : `calc(0.75rem + ${indent}rem)`}"
+                data-id="${tgt.id}"
+                ${isDisabled ? 'disabled' : ''}>
+            
+            <span class="${iconColor} flex-shrink-0 ${isDisabled ? '' : 'group-hover:scale-110 transition-transform'}">${icon}</span>
+            <span class="text-gray-400 text-xs flex-shrink-0">${prefix}</span>
+            <span class="truncate ${titleColor}">
+                ${tgt.title} ${isDisabled ? '<span class="text-xs ml-2 border border-gray-300 rounded px-1">Max</span>' : ''}
+            </span>
+        </button>`;
+    });
+    html += `</div>`;
+
+    // 4. Modal Setup
+    dialogTitle.textContent = t('dialog.move.title');
+    dialogMessage.innerHTML = html;
+    dialogInputContainer.classList.add('hidden');
+    dialogConfirmBtn.classList.add('hidden');
+    dialogCancelBtn.classList.remove('hidden');
+
+    dialogModal.classList.remove('opacity-0', 'pointer-events-none');
+    dialogModal.querySelector('.modal-content').classList.remove('scale-95');
+
+    // 5. Listener
+    const buttons = dialogMessage.querySelectorAll('.move-target-btn:not([disabled])');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const targetId = btn.dataset.id === 'root' ? null : btn.dataset.id;
+            
+            dialogModal.classList.add('opacity-0', 'pointer-events-none');
+            dialogModal.querySelector('.modal-content').classList.add('scale-95');
+            
+            try {
+                await storageService.moveItem(itemId, targetId, isFolder);
+                renderDeckList();
+            } catch (err) {
+                uiShowAlert(t('common.error'), err.message);
+            }
+        });
+    });
+}
+
 /**
  * Renders the current card to the DOM based on active settings.
  * Does NOT advance the queue.
@@ -1066,15 +1289,21 @@ function showDashboard() {
 
     resetStudyState(); 
 
-    // Stop expensive card listener when leaving the deck
-    if (unsubscribeCards) {
-        unsubscribeCards();
-        unsubscribeCards = null;
-    }
-    
-    // Subscribe to deck list if not already running
+    // Subscribe Decks
     if (!unsubscribeDecks && storageService.subscribeDecks) {
-        unsubscribeDecks = storageService.subscribeDecks(renderDeckList);
+        unsubscribeDecks = storageService.subscribeDecks((decks) => {
+            decks.forEach(d => { if(d.parentId === undefined) d.parentId = null; });
+            cachedDecks = decks;
+            renderDeckList();
+        });
+    }
+
+    // Subscribe Folders
+    if (!unsubscribeFolders && storageService.subscribeFolders) {
+        unsubscribeFolders = storageService.subscribeFolders((folders) => {
+            cachedFolders = folders;
+            renderDeckList();
+        });
     }
 }
 
@@ -1109,23 +1338,28 @@ function showStudyView(deckId, deckTitle, deckType = 'standard') {
 
 /**
  * Renders the list of private decks in the dashboard.
- * @param {Array} decks
  */
-function renderDeckList(decks) {
-    cachedDecks = decks;
+function renderDeckList() {
     deckListContainer.innerHTML = '';
+    renderBreadcrumbs();
+    
+    // NEU: Navigations-Buttons rendern
+    renderFolderNavigation();
 
-    // create a copy to sort without mutating the original array
-    const sortedDecks = [...decks].sort((a, b) => {
+    // 1. Filtern
+    const currentDecks = cachedDecks.filter(d => d.parentId === currentFolderId);
+    const currentFolders = cachedFolders.filter(f => f.parentId === currentFolderId);
+
+    // 2. Sortieren
+    currentFolders.sort((a, b) => a.title.localeCompare(b.title));
+    
+    const sortedDecks = [...currentDecks].sort((a, b) => {
+        // (Sortier-Logik bleibt gleich wie vorher)
         switch (currentDeckSort) {
-            case 'name':
-                return a.title.localeCompare(b.title);
-            case 'countDesc':
-                return (b.cardCount || 0) - (a.cardCount || 0);
-            case 'countAsc':
-                return (a.cardCount || 0) - (b.cardCount || 0);
-            case 'newest':
-                return (b.createdAt || '').localeCompare(a.createdAt || '');
+            case 'name': return a.title.localeCompare(b.title);
+            case 'countDesc': return (b.cardCount || 0) - (a.cardCount || 0);
+            case 'countAsc': return (a.cardCount || 0) - (b.cardCount || 0);
+            case 'newest': return (b.createdAt || '').localeCompare(a.createdAt || '');
             case 'lastLearned':
             default:
                 const dateA = a.lastLearnedAt || '';
@@ -1135,51 +1369,102 @@ function renderDeckList(decks) {
         }
     });
 
-    sortedDecks.forEach(deck => {
+    if (currentFolders.length === 0 && sortedDecks.length === 0) {
+        deckListContainer.innerHTML = `<div class="col-span-full text-center p-8 text-gray-500 italic">${t('folder.empty')}</div>`;
+        return;
+    }
+
+    // --- BUTTON STYLE UPDATE ---
+    // Jetzt mit sichtbarem Border und weißem Hintergrund für besseren Kontrast
+    const btnBase = "p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 transition shadow-sm";
+    
+    const btnClass = `${btnBase} text-gray-600 hover:text-blue-600 hover:border-blue-300 dark:text-gray-300 dark:hover:text-blue-400`;
+    const btnDeleteClass = `${btnBase} text-gray-600 hover:text-red-600 hover:border-red-300 hover:bg-red-50 dark:text-gray-300 dark:hover:text-red-400 dark:hover:bg-red-900/20`;
+    const btnMoveClass = `${btnBase} text-gray-600 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 dark:text-gray-300 dark:hover:text-purple-400 dark:hover:bg-purple-900/20`;
+
+    // 3. RENDER FOLDERS
+    currentFolders.forEach(folder => {
         const div = document.createElement('div');
-        div.className = "p-6 pr-14 bg-stone-100 dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
+        // UPDATE: Dunkleres Design (bg-amber-100, border-amber-300)
+        div.className = "h-full p-6 bg-amber-100 dark:bg-amber-900/20 rounded-lg shadow hover:shadow-md transition cursor-pointer border border-amber-300 dark:border-amber-800 flex flex-col justify-between group relative";
         
         div.innerHTML = `
-            <div class="relative">
-                <h3 class="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100 break-words hyphens-auto pr-10">
+            <div class="flex items-center gap-3 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-amber-600 dark:text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                </svg>
+                <span class="font-bold text-lg text-gray-800 dark:text-gray-100 truncate w-full" title="${folder.title}">
+                    ${folder.title}
+                </span>
+            </div>
+            
+            <div class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition z-10">
+                <button class="rename-folder-btn ${btnClass}" title="${t('btn.rename')}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                </button>
+                <button class="move-folder-btn ${btnMoveClass}" title="${t('btn.move')}">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                </button>
+                <button class="delete-folder-btn ${btnDeleteClass}" title="${t('btn.delete')}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            </div>
+            
+            <div class="text-xs text-amber-800/70 dark:text-amber-500/60 mt-2 font-medium">
+                ${t('folder.sub')}
+            </div>
+        `;
+
+        // ... (Event Listeners wie gehabt, keine Änderungen an der Logik) ...
+        div.addEventListener('click', (e) => { if (!e.target.closest('button')) { currentFolderId = folder.id; renderDeckList(); }});
+        div.querySelector('.delete-folder-btn').addEventListener('click', async (e) => { e.stopPropagation(); try { await storageService.deleteFolder(folder.id); } catch (err) { uiShowAlert(t('common.error'), err.message); }});
+        div.querySelector('.rename-folder-btn').addEventListener('click', async (e) => { e.stopPropagation(); const newName = await uiShowPrompt(t('dialog.renameFolder.title'), t('dialog.renameFolder.msg'), folder.title); if(newName && newName.trim()) await storageService.renameFolder(folder.id, newName.trim()); });
+        div.querySelector('.move-folder-btn').addEventListener('click', (e) => { e.stopPropagation(); handleMoveItem(folder.id, true); });
+
+        deckListContainer.appendChild(div);
+    });
+
+    // 4. RENDER DECKS
+    sortedDecks.forEach(deck => {
+        const div = document.createElement('div');
+        // UPDATE: 'dark:border-l-blue-500' hinzugefügt, um die Farbe im Dark Mode zu erzwingen
+        div.className = "h-full p-6 pr-14 bg-stone-100 dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition cursor-pointer border border-gray-200 dark:border-gray-700 border-l-4 border-l-blue-500 dark:border-l-blue-500 relative group flex flex-col justify-between";
+        
+        div.innerHTML = `
+            <div class="relative w-full">
+                <h3 class="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100 break-words hyphens-auto pr-6">
                     ${deck.title}
                 </h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
                     ${deck.cardCount || 0} ${t('common.cards')}
                 </p>
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wide">
-                    ${deck.type}
-                </p>
                 
-                <button class="share-btn absolute top-0 right-0 text-gray-400 hover:text-blue-600 dark:text-gray-500 dark:hover:text-blue-400 p-1 opacity-0 group-hover:opacity-100 transition" title="${t('btn.share')}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                </button>
+                <div class="absolute -top-2 -right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition z-10">
+                    <button class="move-deck-btn ${btnMoveClass}" title="${t('btn.move')}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                    </button>
+                    <button class="share-btn ${btnClass}" title="${t('btn.share')}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
+            
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-4 uppercase tracking-wide">
+                ${deck.type}
+            </p>
         `;
         
-        div.addEventListener('click', (e) => {
-             if(!e.target.closest('.share-btn')) {
-                 showStudyView(deck.id, deck.title, deck.type);
-             }
-        });
-
-        // Publish Button logic
-        const shareBtn = div.querySelector('.share-btn');
-        shareBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
+        // Listener
+        div.addEventListener('click', (e) => { if(!e.target.closest('button')) showStudyView(deck.id, deck.title, deck.type); });
+        const moveBtn = div.querySelector('.move-deck-btn'); if(moveBtn) moveBtn.addEventListener('click', (e) => { e.stopPropagation(); handleMoveItem(deck.id, false); });
+        const shareBtn = div.querySelector('.share-btn'); if (shareBtn) shareBtn.addEventListener('click', async (e) => { 
+            e.stopPropagation(); 
             const confirmed = await uiShowConfirm(t('dialog.publish.title'), t('dialog.publish.msg', {title: deck.title}));
-
-            if (confirmed) {
-                try {
-                    await storageService.publishDeckFull(deck.id, deck);
-                    await uiShowAlert(t('common.success'), t('msg.deckPublished'));
-                } catch (err) {
-                    console.error(err);
-                    await uiShowAlert(t('common.error'), err.message);
-                }
-            }
+            if (confirmed) { try { await storageService.publishDeckFull(deck.id, deck); await uiShowAlert(t('common.success'), t('msg.deckPublished')); } catch (err) { uiShowAlert(t('common.error'), err.message); }}
         });
 
         deckListContainer.appendChild(div);
@@ -1919,11 +2204,11 @@ function openDialog(title, message, type = 'alert', placeholder = '') {
         } else if (type === 'confirm-danger') {
             dialogConfirmBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
             dialogConfirmBtn.classList.add('bg-red-600', 'hover:bg-red-700');
-            dialogConfirmBtn.textContent = "Löschen";
+            dialogConfirmBtn.textContent = t('btn.delete');
         } else if (type === 'prompt') {
             dialogInputContainer.classList.remove('hidden');
             dialogInput.placeholder = placeholder;
-            dialogConfirmBtn.textContent = "Speichern";
+            dialogConfirmBtn.textContent = t('modal.save');
         }
 
         dialogModal.classList.remove('opacity-0', 'pointer-events-none');

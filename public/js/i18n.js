@@ -8,6 +8,8 @@ const translations = {
         "auth.login": "Login mit Google",
         "auth.logout": "Logout",
         "auth.guest": "Gast",
+        "nav.back": "← Zurück",
+        "nav.root": "⌂ Hauptverzeichnis",
         
         // Dashboard
         "dash.desc": "Lerne deine eigenen Karten.",
@@ -74,6 +76,7 @@ const translations = {
         "modal.queue": "Aktueller Stapel",
         "modal.preview.title": "Beispiel-Karten (Vorschau)",
         "modal.preview.import": "⬇ Dieses Deck importieren",
+        "modal.save": "Speichern",
 
         // Templates (NEU)
         "tpl.std.name": "Standard (Sprachen & Wissen)",
@@ -175,6 +178,22 @@ const translations = {
         "mode.chn.zh_de": "Hanzi → Deutsch + Pinyin",
         "mode.chn.py_de": "Pinyin → Deutsch + Hanzi",
         "mode.chn.zh_py": "Hanzi → Pinyin (Deutsch versteckt)",
+
+        // Folder Management
+        "btn.newFolder": "+ Ordner",
+        "btn.move": "Verschieben",
+        "folder.empty": "Dieser Ordner ist leer.",
+        "folder.sub": "Ordner",
+        "folder.root": "Home (Root)",
+        "dialog.newFolder.title": "Neuer Ordner",
+        "dialog.newFolder.msg": "Name des Ordners:",
+        "dialog.renameFolder.title": "Ordner umbenennen",
+        "dialog.renameFolder.msg": "Neuer Name:",
+        "dialog.move.title": "Verschieben nach...",
+        "error.folderNotEmpty": "Ordner ist nicht leer. Bitte erst leeren.",
+        "error.circular": "Kann nicht in sich selbst verschoben werden.",
+        "error.moveSame": "Ziel ist identisch mit Quelle.",
+        "error.maxDepth": "Maximale Ordnertiefe (10) erreicht.",
     },
     en: {
         // Navigation & Header
@@ -183,6 +202,8 @@ const translations = {
         "auth.login": "Login with Google",
         "auth.logout": "Logout",
         "auth.guest": "Guest",
+        "nav.back": "← Back",
+        "nav.root": "⌂ Root",
         
         // Dashboard
         "dash.desc": "Study your own flashcards.",
@@ -249,6 +270,7 @@ const translations = {
         "modal.queue": "Current Stack",
         "modal.preview.title": "Sample Cards",
         "modal.preview.import": "⬇ Import this Deck",
+        "modal.save": "Save",
 
         // Templates
         "tpl.std.name": "Standard (Languages & Knowledge)",
@@ -349,6 +371,22 @@ const translations = {
         "mode.chn.zh_de": "Hanzi → German + Pinyin",
         "mode.chn.py_de": "Pinyin → German + Hanzi",
         "mode.chn.zh_py": "Hanzi → Pinyin (Hide German)",
+
+        // Folder Management
+        "btn.newFolder": "+ Folder",
+        "btn.move": "Move",
+        "folder.empty": "This folder is empty.",
+        "folder.sub": "Folder",
+        "folder.root": "Home (Root)",
+        "dialog.newFolder.title": "New Folder",
+        "dialog.newFolder.msg": "Folder Name:",
+        "dialog.renameFolder.title": "Rename Folder",
+        "dialog.renameFolder.msg": "New Name:",
+        "dialog.move.title": "Move to...",
+        "error.folderNotEmpty": "Folder is not empty. Please empty it first.",
+        "error.circular": "Cannot move folder into itself.",
+        "error.moveSame": "Source and destination are the same.",
+        "error.maxDepth": "Maximum folder depth (10) reached.",
     }
 };
 

@@ -22,6 +22,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
 import { db, auth, appId } from './config.js';
+import { t } from './i18n.js';
 
 /**
  * Factory function to create Firebase Storage Service.
@@ -113,12 +114,17 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
          * Creates a new empty private deck.
          * @param {string} title - Deck title. 
          * @param {string} type - Template type (e.g., 'standard', 'vocab', etc.).
+         * @param {string|null} parentId - Optional parent deck ID for hierarchical decks.
          */
-        createDeck: async (title, type) => {
+        createDeck: async (title, type, parentId = null) => {
             const user = auth.currentUser;
             if (!user) return;
             await addDoc(collection(db, `/artifacts/${appId}/users/${user.uid}/decks`), {
-                title, type, createdAt: new Date().toISOString(), cardCount: 0
+                title, 
+                type, 
+                parentId, // <-- Speichern
+                createdAt: new Date().toISOString(), 
+                cardCount: 0
             });
         },
 
@@ -350,6 +356,76 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
 
             const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
             await setDoc(deckRef, { cardCount: increment(-cardIds.length) }, { merge: true });
+        },
+
+        // --- FOLDERS & STRUCTURE ---
+
+        /**
+         * Subscribes to the user's folders.
+         */
+        subscribeFolders: (onFoldersUpdate) => {
+            const user = auth.currentUser;
+            if (!user) return;
+            const foldersRef = collection(db, `/artifacts/${appId}/users/${user.uid}/folders`);
+            return onSnapshot(query(foldersRef), (snapshot) => {
+                const folders = [];
+                snapshot.forEach((doc) => folders.push({ id: doc.id, ...doc.data() }));
+                onFoldersUpdate(folders);
+            });
+        },
+
+        createFolder: async (title, parentId = null) => {
+            const user = auth.currentUser;
+            if (!user) return;
+            await addDoc(collection(db, `/artifacts/${appId}/users/${user.uid}/folders`), {
+                title,
+                parentId, // null = Root
+                createdAt: new Date().toISOString()
+            });
+        },
+
+        deleteFolder: async (folderId) => {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            // Check if folder is empty (decks)
+            const deckQ = query(collection(db, `/artifacts/${appId}/users/${user.uid}/decks`), where("parentId", "==", folderId));
+            const deckSnap = await getDocs(deckQ);
+            
+            // Check if folder is empty (subfolders)
+            const folderQ = query(collection(db, `/artifacts/${appId}/users/${user.uid}/folders`), where("parentId", "==", folderId));
+            const folderSnap = await getDocs(folderQ);
+
+            if (!deckSnap.empty || !folderSnap.empty) {
+                throw new Error(t('error.folderNotEmpty'));
+            }
+
+            await deleteDoc(doc(db, `/artifacts/${appId}/users/${user.uid}/folders/${folderId}`));
+        },
+
+        renameFolder: async (folderId, newTitle) => {
+            const user = auth.currentUser;
+            if (!user) return;
+            await setDoc(doc(db, `/artifacts/${appId}/users/${user.uid}/folders/${folderId}`), { title: newTitle }, { merge: true });
+        },
+
+        /**
+         * Moves a deck OR a folder to a new parent folder.
+         * @param {string} itemId - ID of the deck or folder
+         * @param {string|null} newParentId - ID of the target folder (or null for root)
+         * @param {boolean} isFolder - true if moving a folder
+         */
+        moveItem: async (itemId, newParentId, isFolder = false) => {
+            const user = auth.currentUser;
+            if (!user) return;
+            const collectionName = isFolder ? 'folders' : 'decks';
+            
+            // Prevent circular move for folders
+            if (isFolder && itemId === newParentId) throw new Error(t('error.circular'));
+            
+            await setDoc(doc(db, `/artifacts/${appId}/users/${user.uid}/${collectionName}/${itemId}`), { 
+                parentId: newParentId 
+            }, { merge: true });
         },
     };
 }

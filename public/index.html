@@ -95,11 +95,20 @@
             </div>
 
             <div id="my-decks-section">
+                <nav id="breadcrumbs" class="flex items-center flex-wrap text-sm text-gray-500 dark:text-gray-400 mb-2 pb-2 min-h-[1.5rem]">
+                    </nav>
+
+                <div id="folder-nav-controls" class="flex gap-2 mb-4 empty:hidden">
+                    </div>
+
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                    
                     <div class="flex items-center gap-4 w-full sm:w-auto">
-                        <p class="text-gray-600 dark:text-gray-400 whitespace-nowrap" data-i18n="dash.desc">Lerne deine eigenen Karten.</p>
+                        <p class="text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block" data-i18n="dash.desc">
+                            Lerne deine eigenen Karten.
+                        </p>
                         
-                        <select id="deck-sort-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-stone-100 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                        <select id="deck-sort-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-stone-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm cursor-pointer w-full sm:w-auto">
                             <option value="lastLearned" data-i18n="sort.lastLearned">Zuletzt gelernt</option>
                             <option value="name" data-i18n="sort.name">Name (A-Z)</option>
                             <option value="countDesc" data-i18n="sort.countDesc">Meiste Karten</option>
@@ -108,13 +117,20 @@
                         </select>
                     </div>
 
-                    <button id="create-deck-btn" class="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm" data-i18n="dash.newDeck">
-                        + Neues Deck
-                    </button>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button id="create-folder-btn" class="flex-1 sm:flex-none bg-stone-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg hover:bg-stone-400 dark:hover:bg-gray-600 transition shadow-sm border border-gray-400 dark:border-gray-600 flex items-center justify-center gap-2 font-medium">
+                            <span class="text-yellow-700 dark:text-yellow-500">📁</span> 
+                            <span class="i18n-text" data-i18n="btn.newFolder">+ Ordner</span>
+                        </button>
+
+                        <button id="create-deck-btn" class="flex-1 sm:flex-none bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm" data-i18n="dash.newDeck">
+                            + Neues Deck
+                        </button>
+                    </div>
                 </div>
 
                 <div id="deck-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    </div>
+                </div>
             </div>
 
             <div id="community-section" class="hidden">
