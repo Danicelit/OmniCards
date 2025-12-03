@@ -178,7 +178,7 @@
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 transition-all">
+            <div class="bg-stone-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 transition-all">
                 <div id="header-add-card" class="flex justify-between items-center cursor-pointer select-none border-b dark:border-gray-700 pb-2 mb-4 group">
                     <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200" data-i18n="study.addCard">Neue Karte hinzufügen</h2>
                     <button class="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition transform duration-200" id="icon-add-card">
@@ -265,16 +265,21 @@
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md transition-all">
+            <div class="bg-stone-100 dark:bg-gray-800 p-6 rounded-lg shadow-md transition-all">
                 <div id="header-card-list" class="flex justify-between items-center cursor-pointer select-none border-b dark:border-gray-700 pb-2 mb-4 group">
                     <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">
                         <span data-i18n="study.allCards">Alle meine Karten</span> (<span id="deck-count">0</span>)
                     </h2>
-                    <button class="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition transform duration-200" id="icon-card-list">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                        </svg>
-                    </button>
+                    
+                    <div class="flex items-center gap-3">
+                        <div id="table-action-container"></div>
+
+                        <button class="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition transform duration-200" id="icon-card-list">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="content-card-list" class="overflow-hidden transition-all duration-300 ease-in-out">
@@ -284,7 +289,7 @@
                                 <tr id="card-table-header-row">
                                     </tr>
                             </thead>
-                            <tbody id="card-list-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody id="card-list-body" class="bg-stone-100 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 </tbody>
                         </table>
                     </div>

@@ -334,5 +334,22 @@ export function createFirebaseService(onAuthChange, userIdEl, errorContainer, un
             if(!d.exists() || d.data().originalAuthorId !== user.uid) throw new Error("Not allowed");
             await _deletePublicDeckInternal(id);
         },
+
+        /**
+         * Deletes multiple cards from a deck.
+         */
+        deleteCards: async (deckId, cardIds) => {
+            const user = auth.currentUser;
+            if (!user || !deckId) return;
+            
+            const deletePromises = cardIds.map(cardId => {
+                const cardRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}/cards/${cardId}`);
+                return deleteDoc(cardRef);
+            });
+            await Promise.all(deletePromises);
+
+            const deckRef = doc(db, `/artifacts/${appId}/users/${user.uid}/decks/${deckId}`);
+            await setDoc(deckRef, { cardCount: increment(-cardIds.length) }, { merge: true });
+        },
     };
 }

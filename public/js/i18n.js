@@ -34,6 +34,7 @@ const translations = {
         "btn.delete": "Löschen",
         "btn.rename": "Umbenennen",
         "btn.share": "Veröffentlichen",
+        "btn.deleteSelected": "Ausgewählte löschen ({n})",
         
         // Study View
         "study.back": "← Zurück zur Übersicht",
@@ -131,6 +132,10 @@ const translations = {
         "dialog.import.msg": "Möchtest du \"{title}\" in deine Sammlung importieren?",
         "dialog.delPublic.title": "Löschen",
         "dialog.delPublic.msg": "Möchtest du dein öffentliches Deck \"{title}\" wirklich löschen?",
+        "dialog.delCard.title": "Karte löschen?",
+        "dialog.delCard.msg": "Möchtest du diese Karte wirklich löschen?",
+        "dialog.delBulk.title": "Karten löschen?",
+        "dialog.delBulk.msg": "Möchtest du wirklich {n} Karten unwiderruflich löschen?",
 
         // Common
         "common.cards": "Karten",
@@ -189,6 +194,7 @@ const translations = {
         "btn.delete": "Delete",
         "btn.rename": "Rename",
         "btn.share": "Publish",
+        "btn.deleteSelected": "Delete Selected ({n})",
         
         // Study View
         "study.back": "← Back to Dashboard",
@@ -286,6 +292,10 @@ const translations = {
         "dialog.import.msg": "Do you want to import \"{title}\" to your collection?",
         "dialog.delPublic.title": "Delete",
         "dialog.delPublic.msg": "Do you really want to delete your public deck \"{title}\"?",
+        "dialog.delCard.title": "Delete Card?",
+        "dialog.delCard.msg": "Do you really want to delete this card?",
+        "dialog.delBulk.title": "Delete Cards?",
+        "dialog.delBulk.msg": "Do you really want to delete {n} cards?",
 
         // Common
         "common.cards": "Cards",

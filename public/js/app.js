@@ -45,6 +45,8 @@ let allPublicDecks = [];            // Cache for public marketplace decks
 
 let dialogResolve = null; // Promise resolve function for custom dialogs
 
+let selectedCardIds = new Set();
+
 // --- DOM Elements ---
 
 const appContainer = document.getElementById('app-container');
@@ -96,6 +98,7 @@ const iconAddCard = document.getElementById('icon-add-card');
 const headerCardList = document.getElementById('header-card-list');
 const contentCardList = document.getElementById('content-card-list');
 const iconCardList = document.getElementById('icon-card-list');
+const tableActionContainer = document.getElementById('table-action-container');
 
 // Inputs (Reference kept for Pinyin helper, but mostly generated dynamically now)
 const inputFront = document.getElementById('input-front');
@@ -566,6 +569,7 @@ function resetStudyState() {
     currentDeckId = null;
     currentDeckType = 'standard';
     allCards = [];
+    selectedCardIds.clear();
     
     if(cardFrontText) cardFrontText.innerHTML = '';
     if(cardBackContent) cardBackContent.innerHTML = '';
@@ -587,6 +591,34 @@ async function handleDeleteDeck() {
     } catch (error) {
         console.error(error);
         await uiShowAlert("Fehler", error.message);
+    }
+}
+
+async function handleBulkDelete() {
+    if (selectedCardIds.size === 0) return;
+
+    const count = selectedCardIds.size;
+    const confirmed = await uiShowConfirm(
+        t('dialog.delBulk.title'), 
+        t('dialog.delBulk.msg', {n: count}), 
+        true
+    );
+
+    if (confirmed) {
+        try {
+            const idsToDelete = Array.from(selectedCardIds);
+            
+            await storageService.deleteCards(currentDeckId, idsToDelete);
+            
+            selectedCardIds.clear();
+            
+            updateTableHeaders(currentDeckType); 
+            
+            await uiShowAlert(t('common.success'), `${count} ${t('common.geloescht')}`);
+        } catch (error) {
+            console.error(error);
+            await uiShowAlert(t('common.error'), error.message);
+        }
     }
 }
 
@@ -748,10 +780,20 @@ function buildReviewQueue() {
 async function handleCardListActions(e) {
     if (e.target.classList.contains('delete-btn')) {
         const cardId = e.target.dataset.id;
-        try {
-            await storageService.deleteCard(currentDeckId, cardId);
-        } catch (error) {
-            console.error(error);
+        
+        const confirmed = await uiShowConfirm(
+            t('dialog.delCard.title'), 
+            t('dialog.delCard.msg'), 
+            true
+        );
+
+        if (confirmed) {
+            try {
+                await storageService.deleteCard(currentDeckId, cardId);
+            } catch (error) {
+                console.error(error);
+                await uiShowAlert(t('common.error'), error.message);
+            }
         }
     }
 
@@ -1142,6 +1184,9 @@ function getLevelBadgeClasses(srsLevel) {
 function renderCardList() {
     cardListBody.innerHTML = ''; 
     const sortedCards = [...allCards]; 
+
+    const currentIds = new Set(allCards.map(c => c.id));
+    selectedCardIds = new Set([...selectedCardIds].filter(id => currentIds.has(id)));
     
     // Sorting Logic
     const { column, direction } = currentSort;
@@ -1178,16 +1223,23 @@ function renderCardList() {
     });
 
     if (sortedCards.length === 0) {
-        cardListBody.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">${t('table.noCards')}</td></tr>`; // Übersetzung!
+        cardListBody.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">${t('table.noCards')}</td></tr>`;
+        updateTableHeaders(currentDeckType);
         return;
     }
 
+    updateTableHeaders(currentDeckType);
     updateSortIndicators();
     
     sortedCards.forEach((card, index) => {
         const badgeClass = getLevelBadgeClasses(card.srsLevel);
         const tr = document.createElement('tr');
         tr.className = "hover:bg-stone-50 dark:hover:bg-gray-700 transition-colors duration-200 border-b border-gray-100 dark:border-gray-700 last:border-0";
+
+        // Checkbox Status
+        const isSelected = selectedCardIds.has(card.id);
+        const trBg = isSelected ? "bg-blue-50 dark:bg-blue-900/20" : "";
+        if (isSelected) tr.className += " " + trBg;
         
         // Fallbacks for display
         const displayFront = card.front || card.german || '?';
@@ -1198,6 +1250,10 @@ function renderCardList() {
         const cellClass = "line-clamp-2 overflow-hidden break-words max-w-[200px] max-h-[3em]";
 
         tr.innerHTML = `
+            <td class="px-4 py-3 w-10 text-center align-top">
+                <input type="checkbox" class="card-select-cb rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" data-id="${card.id}" ${isSelected ? 'checked' : ''}>
+            </td>
+
             <td class="px-2 py-3 text-sm text-gray-500 dark:text-gray-400 align-top">${index + 1}</td>
             
             <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 align-top">
@@ -1213,7 +1269,7 @@ function renderCardList() {
             </td>
             
             <td class="px-4 py-3 text-sm align-top whitespace-nowrap">
-                <span class="${badgeClass} px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center">
+                <span class="${getLevelBadgeClasses(card.srsLevel)} px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center">
                     Level ${card.srsLevel}
                 </span>
                 <span class="text-xs text-gray-400 dark:text-gray-500 ml-2" title="Gewusst in Folge">
@@ -1223,15 +1279,32 @@ function renderCardList() {
             
             <td class="px-4 py-3 text-sm align-top">
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <button data-id="${card.id}" class="edit-btn text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">Edit</button>
-                    <button data-id="${card.id}" class="delete-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium">Löschen</button>
+                    <button data-id="${card.id}" class="edit-btn text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors">${t('table.edit')}</button>
+                    <button data-id="${card.id}" class="delete-btn text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium transition-colors">${t('table.delete')}</button>
                 </div>
             </td>
         `;
         cardListBody.appendChild(tr);
     });
 
+    // Listener for checkboxes
+    document.querySelectorAll('.card-select-cb').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+            const id = e.target.dataset.id;
+            if (e.target.checked) {
+                selectedCardIds.add(id);
+            } else {
+                selectedCardIds.delete(id);
+            }
+            // Wir rendern neu, um den "Delete All" Button und "Select All" Status im Header zu updaten
+            // Das ist etwas teuer, aber bei <1000 Karten ok. 
+            // Optimierung: Nur Header updaten. Aber wir bleiben erstmal simpel.
+            renderCardList(); 
+        });
+    });
+
     renderMath(cardListBody); 
+    updateTableActions();
 }
 
 function renderMath(element) {
@@ -1310,6 +1383,34 @@ function initSectionState(contentEl, iconEl, storageKey) {
     } else {
         contentEl.classList.add('hidden');
         iconEl.innerHTML = ICON_PLUS;
+    }
+}
+
+function updateTableActions() {
+    const container = document.getElementById('table-action-container');
+    if (!container) return;
+    
+    const selectedCount = selectedCardIds.size;
+
+    if (selectedCount > 0) {
+        tableActionContainer.innerHTML = `
+            <button id="bulk-delete-btn" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-gray-700 border border-red-200 dark:border-red-900 px-3 py-1 rounded text-sm font-bold transition shadow-sm flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                ${t('btn.deleteSelected', {n: selectedCount})}
+            </button>
+        `;
+        
+        const btn = document.getElementById('bulk-delete-btn');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleBulkDelete();
+            });
+        }
+    } else {
+        container.innerHTML = '';
     }
 }
 
@@ -1629,8 +1730,34 @@ function updateTableHeaders(deckType) {
     if (!cardTableHeaderRow) return;
 
     const template = CardTemplates[deckType] || CardTemplates['standard'];
+    const selectedCount = selectedCardIds.size;
     
-    let html = `<th class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>`;
+    const allSelected = allCards.length > 0 && selectedCardIds.size === allCards.length;
+
+    if (selectedCount > 0) {
+        tableActionContainer.innerHTML = `
+            <button id="bulk-delete-btn" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-gray-700 border border-red-200 dark:border-red-900 px-3 py-1 rounded text-xs font-bold transition shadow-sm flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                ${t('btn.deleteSelected', {n: selectedCount})}
+            </button>
+        `;
+        
+        document.getElementById('bulk-delete-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleBulkDelete();
+        });
+    } else {
+        tableActionContainer.innerHTML = '';
+    }
+
+    let html = `
+        <th class="px-4 py-3 w-10 text-center">
+            <input type="checkbox" id="select-all-checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" ${allSelected ? 'checked' : ''}>
+        </th>
+        <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">#</th>
+    `;
 
     const sortKeys = ['front', 'back', 'extra'];
     
@@ -1648,10 +1775,32 @@ function updateTableHeaders(deckType) {
         <th data-sort="level" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-white">
             ${t('table.level')} <span class="sort-indicator"></span>
         </th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">${t('table.actions')}</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+            ${t('table.actions')}
+        </th>
     `;
 
     cardTableHeaderRow.innerHTML = html;
+
+    const selectAllCb = document.getElementById('select-all-checkbox');
+    if(selectAllCb) {
+        selectAllCb.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                allCards.forEach(c => selectedCardIds.add(c.id));
+            } else {
+                selectedCardIds.clear();
+            }
+            renderCardList(); 
+        });
+    }
+
+    const bulkBtn = document.getElementById('bulk-delete-btn');
+    if (bulkBtn) {
+        bulkBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            handleBulkDelete();
+        });
+    }
 }
 
 // --- Custom Dialog System (Alert/Confirm/Prompt Replacement) ---
