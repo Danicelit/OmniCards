@@ -172,6 +172,9 @@ const breadcrumbsContainer = document.getElementById('breadcrumbs');
 const createFolderBtn = document.getElementById('create-folder-btn');
 const MAX_FOLDER_DEPTH = 10;
 
+const queueMaxInput = document.getElementById('queue-max-input');
+const modalReshuffleBtn = document.getElementById('modal-reshuffle-btn');
+
 
 // --- Initialization ---
 
@@ -373,6 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (createFolderBtn) createFolderBtn.addEventListener('click', handleCreateFolder);
+
+    if (modalReshuffleBtn) modalReshuffleBtn.addEventListener('click', handleRebuildQueue);
 });
 
 
@@ -433,6 +438,26 @@ function handleDataUpdate(cards) {
         return;
     }
 
+    if (reviewQueue.length === 0) {
+        const restored = loadSessionState();
+        
+        if (!restored) {
+            // Nur neu bauen, wenn keine Session gespeichert war
+            if (allCards.length > 0) buildReviewQueue();
+        } else {
+            // Wenn erfolgreich wiederhergestellt:
+            if (!currentCard && reviewQueue.length > 0) {
+                 showNextCard();
+                 return; 
+            } else if (currentCard) {
+                // UI refreshen mit wiederhergestelltem Stand
+                renderCurrentCardUI();
+                if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
+                return;
+            }
+        }
+    }
+
     // 2. Queue maintenance: Update existing queue items with new data
     if (reviewQueue.length > 0) {
         reviewQueue = reviewQueue
@@ -452,8 +477,7 @@ function handleDataUpdate(cards) {
 
     if (newCards.length > 0) {
         newCards.forEach(c => {
-            // Add 9 copies for immediate learning
-            for(let i=0; i<9; i++) reviewQueue.push(c);
+            reviewQueue.push(c);
         });
         shuffleArray(reviewQueue);
         if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
@@ -478,6 +502,8 @@ function handleDataUpdate(cards) {
     } else if (!currentCard && allCards.length === 0) {
         showNextCard();
     }
+
+    if (reviewQueue.length > 0) saveSessionState();
 }
 
 /**
@@ -816,35 +842,84 @@ function showNextCard(delayBackUpdate = false) {
 }
 
 /**
- * Builds the weighted study queue using SRS logic.
- * New Cards (Level 0) appear 9 times. Higher levels appear less frequently.
+ * Builds the weighted study queue using 4-2-1 Interleaving strategy.
+ * Groups: A (Lvl 0-1), B (Lvl 2-3), C (Lvl 4+).
+ * Pattern: 4x A, 2x B, 1x C -> Shuffle -> Add to Queue.
  */
 function buildReviewQueue() {
     reviewQueue = [];
-    
     if (!allCards || allCards.length === 0) return;
 
-    allCards.forEach(card => {
-        let count = 0;
-        const level = (typeof card.srsLevel === 'number') ? card.srsLevel : 0;
+    // 1. Pools erstellen
+    // Wir arbeiten mit Kopien, damit wir splice() nutzen können, ohne allCards zu leeren
+    const poolA = allCards.filter(c => (c.srsLevel || 0) <= 1); // Lernen
+    const poolB = allCards.filter(c => (c.srsLevel || 0) >= 2 && (c.srsLevel || 0) <= 3); // Festigen
+    const poolC = allCards.filter(c => (c.srsLevel || 0) >= 4); // Meistern
 
-        switch (level) {
-            case 0: count = 9; break; 
-            case 1: count = 6; break; 
-            case 2: count = 3; break; 
-            case 3: count = 1; break;
-            case 4: count = (Math.random() < 0.33) ? 1 : 0; break; 
-            default: count = 1;
+    // Shuffle Pools initial, damit wir zufällige Karten aus den Pools ziehen
+    shuffleArray(poolA);
+    shuffleArray(poolB);
+    shuffleArray(poolC);
+
+    // 2. Limit holen
+    let maxCards = 50;
+    if (queueMaxInput && queueMaxInput.value) {
+        let val = parseInt(queueMaxInput.value);
+        
+        if (isNaN(val)) {
+            val = 50;
+        }
+        
+        if (val < 1) {
+            val = 50;
         }
 
-        for (let i = 0; i < count; i++) {
-            reviewQueue.push(card);
+        if (val > 100000) {
+            val = 100000;
         }
-    });
 
-    shuffleArray(reviewQueue);
+        maxCards = val;
+        
+        queueMaxInput.value = maxCards;
+    }
+
+    // 3. Queue bauen (Interleaving Loop)
+    while (reviewQueue.length < maxCards) {
+        // Abbruchbedingung: Wenn alle Pools leer sind
+        if (poolA.length === 0 && poolB.length === 0 && poolC.length === 0) break;
+
+        const chunk = [];
+
+        // 4x Level 0-1
+        if (poolA.length > 0) chunk.push(...poolA.splice(0, 4));
+        
+        // 2x Level 2-3
+        if (poolB.length > 0) chunk.push(...poolB.splice(0, 2));
+        
+        // 1x Level 4+
+        if (poolC.length > 0) chunk.push(...poolC.splice(0, 1));
+
+        // Chunk mischen, damit die Reihenfolge innerhalb des Blocks (4-2-1) nicht starr ist
+        shuffleArray(chunk);
+
+        // Zur Queue hinzufügen
+        reviewQueue.push(...chunk);
+    }
+
+    // Hard Cut, falls der letzte Chunk das Limit überschritten hat
+    if (reviewQueue.length > maxCards) {
+        reviewQueue = reviewQueue.slice(0, maxCards);
+    }
     
+    // UI Update
     if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
+    
+    // Wenn Modal offen ist, Liste aktualisieren
+    if (!queueModal.classList.contains('opacity-0')) {
+        buildAndShowQueueModal(); // Refresht die Liste im Modal
+    }
+
+    saveSessionState();
 }
 
 async function handleCardListActions(e) {
@@ -943,7 +1018,12 @@ async function handleUpdateCard(e) {
 async function handleFeedback(wasCorrect) {
     if (!currentCard || !currentDeckId) return;
 
-    let srsLevel = (typeof currentCard.srsLevel === 'number') ? currentCard.srsLevel : 0;
+    cardInner.classList.remove('is-flipped');
+    feedbackButtons.style.display = 'none';
+
+    const oldLevel = (typeof currentCard.srsLevel === 'number') ? currentCard.srsLevel : 0;
+    
+    let srsLevel = oldLevel;
     let consecutiveCorrect = (typeof currentCard.consecutiveCorrect === 'number') ? currentCard.consecutiveCorrect : 0;
 
     if (wasCorrect) {
@@ -951,44 +1031,107 @@ async function handleFeedback(wasCorrect) {
         if (consecutiveCorrect >= 3 && srsLevel < 4) {
             srsLevel++;
             consecutiveCorrect = 0; 
+        } else if (oldLevel === 0) {
+            srsLevel = 1;
+            consecutiveCorrect = 0;
         }
-        
     } else {
         consecutiveCorrect = 0;
-        if (srsLevel > 0) {
-            srsLevel--;
-        }
+        if (srsLevel > 0) srsLevel--;
     }
 
-    try {
-        await storageService.updateCard(currentDeckId, currentCard.id, { 
-            srsLevel: srsLevel, 
-            consecutiveCorrect: consecutiveCorrect 
-        });
-    } catch (error) {
-        console.error("Fehler beim Speichern:", error);
+    storageService.updateCard(currentDeckId, currentCard.id, { 
+        srsLevel: srsLevel, 
+        consecutiveCorrect: consecutiveCorrect 
+    }).catch(console.error);
+
+    currentCard.srsLevel = srsLevel;
+    currentCard.consecutiveCorrect = consecutiveCorrect;
+    
+    const localRef = allCards.find(c => c.id === currentCard.id);
+    if (localRef) {
+        localRef.srsLevel = srsLevel;
+        localRef.consecutiveCorrect = consecutiveCorrect;
     }
 
-    // If WRONG: Rebuild queue to reinforce learning
     if (!wasCorrect) {
-        // Manually update local ref because snapshot is async
-        const localCardRef = allCards.find(c => c.id === currentCard.id);
-        if (localCardRef) {
-            localCardRef.srsLevel = srsLevel;
-            localCardRef.consecutiveCorrect = consecutiveCorrect;
-        }
+        const insertIndex = Math.min(reviewQueue.length, 3);
+        reviewQueue.splice(insertIndex, 0, currentCard);
+    
+    } else {        
+        if (srsLevel >= 3) {
+        } else {
+            let insertIndex;
 
-        buildReviewQueue(); 
+            if (oldLevel === 0) {
+                insertIndex = Math.min(reviewQueue.length, 3);
+                reviewQueue.splice(insertIndex, 0, currentCard);
+            } 
+            else if (oldLevel === 1) {
+                insertIndex = Math.min(reviewQueue.length, 10);
+                reviewQueue.splice(insertIndex, 0, currentCard);
+            } 
+            else {
+                reviewQueue.push(currentCard);
+            }
+        }
     }
 
     if (reviewQueue.length === 0) {
-        buildReviewQueue();
+        buildReviewQueue(); 
     }
-    
+
+    if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
     showNextCard(true);
+
+    saveSessionState();
 }
 
 // --- Helper Functions ---
+
+// --- Session Persistence Helper ---
+function saveSessionState() {
+    if (!currentDeckId) return;
+    const sessionData = {
+        queue: reviewQueue.map(c => c.id),
+        currentCardId: currentCard ? currentCard.id : null
+    };
+    localStorage.setItem(`omni_queue_${currentDeckId}`, JSON.stringify(sessionData));
+}
+
+function loadSessionState() {
+    if (!currentDeckId) return false;
+    const json = localStorage.getItem(`omni_queue_${currentDeckId}`);
+    if (!json) return false;
+    
+    try {
+        const data = JSON.parse(json);
+        if (!data.queue || !Array.isArray(data.queue) || data.queue.length === 0) return false;
+
+        // IDs zurück zu echten Karten-Objekten mappen
+        const restoredQueue = data.queue
+            .map(id => allCards.find(c => c.id === id))
+            .filter(c => c !== undefined);
+
+        if (restoredQueue.length === 0) return false;
+
+        reviewQueue = restoredQueue;
+        
+        // Aktive Karte wiederherstellen
+        if (data.currentCardId) {
+            const restoredCard = allCards.find(c => c.id === data.currentCardId);
+            if (restoredCard) currentCard = restoredCard;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function clearSessionState() {
+    if (!currentDeckId) return;
+    localStorage.removeItem(`omni_queue_${currentDeckId}`);
+}
 
 function getFolderDepth(folderId) {
     if (!folderId) return 0;
@@ -1365,6 +1508,10 @@ async function handleSyncLocalToCloud() {
  * Resets study state, stops listeners, and refreshes the deck list.
  */
 function showDashboard() {
+    if (currentDeckId && reviewQueue.length > 0) {
+        saveSessionState();
+    }
+
     dashboardView.classList.remove('hidden');
     studyView.classList.add('hidden');
     
@@ -1812,6 +1959,7 @@ function buildAndShowQueueModal() {
 }
 
 function handleRebuildQueue() {
+    clearSessionState();
     buildReviewQueue();
     showNextCard();
 }

@@ -77,6 +77,8 @@ const translations = {
         "modal.preview.title": "Beispiel-Karten (Vorschau)",
         "modal.preview.import": "⬇ Dieses Deck importieren",
         "modal.save": "Speichern",
+        "queue.max": "Max. Anzahl Karten:",
+        "btn.reshuffle": "Mischen & Anwenden",
 
         // Templates (NEU)
         "tpl.std.name": "Standard (Sprachen & Wissen)",
@@ -271,6 +273,8 @@ const translations = {
         "modal.preview.title": "Sample Cards",
         "modal.preview.import": "⬇ Import this Deck",
         "modal.save": "Save",
+        "queue.max": "Max. Card Count:",
+        "btn.reshuffle": "Shuffle & Apply",
 
         // Templates
         "tpl.std.name": "Standard (Languages & Knowledge)",
