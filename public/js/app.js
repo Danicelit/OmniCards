@@ -47,6 +47,8 @@ let dialogResolve = null; // Promise resolve function for custom dialogs
 
 let selectedCardIds = new Set();
 
+let currentStudyExtra = 'back';
+
 // --- DOM Elements ---
 
 const appContainer = document.getElementById('app-container');
@@ -99,6 +101,7 @@ const headerCardList = document.getElementById('header-card-list');
 const contentCardList = document.getElementById('content-card-list');
 const iconCardList = document.getElementById('icon-card-list');
 const tableActionContainer = document.getElementById('table-action-container');
+const studyExtraSelect = document.getElementById('study-extra-select');
 
 // Inputs (Reference kept for Pinyin helper, but mostly generated dynamically now)
 const inputFront = document.getElementById('input-front');
@@ -304,14 +307,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (studyModeSelect) studyModeSelect.value = savedMode;
     }
 
+    // Mode Listener
     if (studyModeSelect) {
         studyModeSelect.addEventListener('change', (e) => {
             currentStudyMode = e.target.value;
-            localStorage.setItem('omniCardsStudyMode', currentStudyMode);
-
+            localStorage.setItem(`omniMode_${currentDeckType}`, currentStudyMode);
             if (currentDeckId) {
                 buildReviewQueue();
                 showNextCard();
+            }
+        });
+    }
+
+    // Extra-field Listener
+    if (studyExtraSelect) {
+        studyExtraSelect.addEventListener('change', (e) => {
+            currentStudyExtra = e.target.value;
+            localStorage.setItem(`omniExtra_${currentDeckType}`, currentStudyExtra);
+            
+            if (currentDeckId && currentCard) {
+                renderCurrentCardUI(); 
             }
         });
     }
@@ -715,34 +730,9 @@ function showNextCard() {
     currentCard = reviewQueue.shift(); 
     if (!currentCard) { showNextCard(); return; }
     
-    // Apply Study Mode (Swap front/back if needed)
-    let useReverse = false;
-    if (currentStudyMode === 'reverse') { useReverse = true; }
-    else if (currentStudyMode === 'random') { useReverse = Math.random() < 0.5; }
-
-    const displayCard = { ...currentCard };
-
-    if (useReverse) {
-        const realFront = displayCard.front || displayCard.german || '';
-        const realBack = displayCard.back || displayCard.chinese || '';
-        displayCard.front = realBack;
-        displayCard.back = realFront;
-    }
-    
-    const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
-    cardFrontText.innerHTML = template.renderFront(displayCard);
-    renderMath(cardFrontText); 
-
-    cardBackContent.innerHTML = '';
-    const newBackContent = template.renderBack(displayCard);
-
-    // Delay back rendering to hide it during flip
-    setTimeout(() => {
-        cardBackContent.innerHTML = newBackContent;
-        renderMath(cardBackContent); 
-    }, 300);
-
     if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
+
+    renderCurrentCardUI();
 }
 
 /**
@@ -913,6 +903,108 @@ async function handleFeedback(wasCorrect) {
 
 // --- Helper Functions ---
 
+/**
+ * Renders the current card to the DOM based on active settings.
+ * Does NOT advance the queue.
+ */
+function renderCurrentCardUI() {
+    if (!currentCard) return;
+
+    const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
+    const hasCustomModes = !!template.modes;
+
+    let renderMode = currentStudyMode;
+
+    if (currentStudyMode === 'random') {
+        if (hasCustomModes) {
+            const modeKeys = Object.keys(template.modes);
+            renderMode = modeKeys[Math.floor(Math.random() * modeKeys.length)];
+        } else {
+            renderMode = Math.random() < 0.5 ? 'std' : 'rev';
+        }
+    }
+    
+    const extraPos = (typeof currentStudyExtra !== 'undefined') ? currentStudyExtra : 'back';
+
+    cardFrontText.innerHTML = template.renderFront(currentCard, renderMode, extraPos);
+    renderMath(cardFrontText); 
+    
+    const newBackContent = template.renderBack(currentCard, renderMode, extraPos);
+    
+    cardBackContent.innerHTML = newBackContent;
+    renderMath(cardBackContent); 
+}
+
+/**
+ * Updates the study mode options based on the selected template.
+ */
+function updateStudyModeOptions(templateKey) {
+    const template = CardTemplates[templateKey] || CardTemplates['standard'];
+    studyModeSelect.innerHTML = '';
+    
+    const hasCustomModes = !!template.modes;
+
+    if (hasCustomModes) {
+        if(studyExtraSelect) studyExtraSelect.classList.add('hidden');
+
+        Object.entries(template.modes).forEach(([key, labelKey]) => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = t(labelKey);
+            studyModeSelect.appendChild(option);
+        });
+        
+        // Random Option
+        const randomOption = document.createElement('option');
+        randomOption.value = 'random';
+        randomOption.textContent = t('mode.random');
+        studyModeSelect.appendChild(randomOption);
+        
+        // Load State
+        const savedMode = localStorage.getItem(`omniMode_${templateKey}`);
+        if (savedMode && (template.modes[savedMode] || savedMode === 'random')) {
+            studyModeSelect.value = savedMode;
+            currentStudyMode = savedMode;
+        } else {
+            const firstKey = Object.keys(template.modes)[0];
+            studyModeSelect.value = firstKey;
+            currentStudyMode = firstKey;
+        }
+
+    } else {
+        if(studyExtraSelect) {
+            studyExtraSelect.classList.remove('hidden');
+            // Load Extra State
+            const savedExtra = localStorage.getItem(`omniExtra_${templateKey}`) || 'back';
+            studyExtraSelect.value = savedExtra;
+            currentStudyExtra = savedExtra;
+        }
+
+        const genericOptions = [
+            { val: 'std', label: 'dir.std' },
+            { val: 'rev', label: 'dir.rev' },
+            { val: 'random', label: 'mode.random' }
+        ];
+
+        genericOptions.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.val;
+            option.textContent = t(opt.label);
+            studyModeSelect.appendChild(option);
+        });
+
+        // Load Direction State
+        const savedMode = localStorage.getItem(`omniMode_${templateKey}`);
+        if (savedMode && ['std', 'rev', 'random'].includes(savedMode)) {
+            studyModeSelect.value = savedMode;
+            currentStudyMode = savedMode;
+        } else {
+            studyModeSelect.value = 'std';
+            currentStudyMode = 'std';
+        }
+    }
+}
+
 function handlePinyinConvert() {
     let pinyinText = inputExtra.value;
     if (!pinyinText) return;
@@ -1001,8 +1093,8 @@ function showStudyView(deckId, deckTitle, deckType = 'standard') {
     currentDeckType = deckType || 'standard'; 
     
     buildFormFields(currentDeckType, dynamicFieldsContainer);
-
     updateTableHeaders(currentDeckType);
+    updateStudyModeOptions(currentDeckType);
 
     document.querySelector('h1').textContent = deckTitle;
     

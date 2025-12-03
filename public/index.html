@@ -204,12 +204,16 @@
             <div class="bg-stone-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 relative transition-all duration-300">
                 
                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3">
-                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <div class="flex items-center gap-3 w-full sm:w-auto flex-wrap">
                         <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200" data-i18n="study.learn">Lernen</h2>
+                        
                         <select id="study-mode-select" class="py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-stone-100 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 cursor-pointer shadow-sm">
-                            <option value="standard" data-i18n="mode.standard">Standard (A → B)</option>
-                            <option value="reverse" data-i18n="mode.reverse">Umgekehrt (B → A)</option>
-                            <option value="random" data-i18n="mode.random">Zufällig (Mix)</option>
+                            </select>
+
+                        <select id="study-extra-select" class="hidden py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-stone-100 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 cursor-pointer shadow-sm">
+                            <option value="none" data-i18n="extra.none">Extra: Aus</option>
+                            <option value="front" data-i18n="extra.front">Extra: Vorne</option>
+                            <option value="back" selected data-i18n="extra.back">Extra: Hinten</option>
                         </select>
                     </div>
 

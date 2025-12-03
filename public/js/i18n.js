@@ -159,7 +159,22 @@ const translations = {
         // Study Modes
         "mode.standard": "Standard (A → B)",
         "mode.reverse": "Umgekehrt (B → A)",
-        "mode.random": "Zufällig (Mix)"
+        "mode.random": "Zufällig (Mix)",
+
+        // Extra Feld Options
+        "extra.none": "Extra: Ausblenden",
+        "extra.front": "Extra: Auf Vorderseite",
+        "extra.back": "Extra: Auf Rückseite",
+
+        // Math Modes
+        "dir.std": "Standard (A → B)",
+        "dir.rev": "Umgekehrt (B → A)",
+        
+        // Chinese Modes (Bleiben spezifisch)
+        "mode.chn.de_zh": "Deutsch → Hanzi + Pinyin",
+        "mode.chn.zh_de": "Hanzi → Deutsch + Pinyin",
+        "mode.chn.py_de": "Pinyin → Deutsch + Hanzi",
+        "mode.chn.zh_py": "Hanzi → Pinyin (Deutsch versteckt)",
     },
     en: {
         // Navigation & Header
@@ -320,6 +335,20 @@ const translations = {
         "mode.standard": "Standard (A → B)",
         "mode.reverse": "Reverse (B → A)",
         "mode.random": "Random (Mix)",
+
+        // Extra Field Options
+        "extra.none": "Extra: Hidden",
+        "extra.front": "Extra: On Front",
+        "extra.back": "Extra: On Back",
+
+        "dir.std": "Standard (A → B)",
+        "dir.rev": "Reverse (B → A)",
+        
+        // Chinese Modes
+        "mode.chn.de_zh": "German → Hanzi + Pinyin",
+        "mode.chn.zh_de": "Hanzi → German + Pinyin",
+        "mode.chn.py_de": "Pinyin → German + Hanzi",
+        "mode.chn.zh_py": "Hanzi → Pinyin (Hide German)",
     }
 };
 
