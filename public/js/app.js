@@ -1519,7 +1519,7 @@ function renderPublicDeckList() {
             importBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const msg = isMyDeck 
-                    ? `Möchtest du dein eigenes Deck "${deck.title}" importieren (duplizieren)?`
+                    ? `${t('comm.importOwnDeck')} "${deck.title}"?`
                     : t('dialog.import.msg', {title: deck.title});
 
                 const confirmed = await uiShowConfirm(t('dialog.import.title'), msg);

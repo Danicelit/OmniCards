@@ -25,6 +25,7 @@ const translations = {
         "comm.createdBy": "Erstellt von",
         "comm.loadingExamples": "Lade Beispiele...",
         "comm.moreExamples": "... und weitere Karten.",
+        "comm.importOwnDeck": "Importiere dein eigenes Deck:",
         
         // Deck Cards & Actions
         "btn.preview": "Vorschau",
@@ -179,6 +180,7 @@ const translations = {
         "comm.createdBy": "Created by",
         "comm.loadingExamples": "Loading examples...",
         "comm.moreExamples": "... and more cards.",
+        "comm.importOwnDeck": "Import your own deck:",
         
         // Deck Cards & Actions
         "btn.preview": "Preview",
