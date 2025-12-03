@@ -111,7 +111,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </div>
-                            <input type="text" id="public-search-input" class="pl-10 w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-stone-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Suche..." data-i18n-placeholder="comm.searchPlaceholder">
+                            <input type="text" id="public-search-input" autocomplete="off" class="pl-10 w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-stone-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm" placeholder="Suche..." data-i18n-placeholder="comm.searchPlaceholder">
                         </div>
 
                         <select id="public-filter-select" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-stone-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500 shadow-sm cursor-pointer w-full sm:w-auto">
@@ -339,7 +339,7 @@
             <form id="create-deck-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" data-i18n="modal.deckName">Name des Decks</label>
-                    <input type="text" name="deckName" maxlength="40" required class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-stone-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500">
+                    <input type="text" name="deckName" maxlength="40" required autocomplete="off" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-stone-100 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" data-i18n="modal.template">Vorlage wählen</label>
@@ -391,7 +391,7 @@
             <p id="dialog-message" class="text-gray-600 dark:text-gray-300 mb-4 break-words hyphens-auto"></p>
             
             <div id="dialog-input-container" class="hidden mb-4">
-                <input type="text" id="dialog-input" maxlength="40" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" autocomplete="off">
+                <input type="text" id="dialog-input" maxlength="40" autocomplete="off" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" autocomplete="off">
             </div>
 
             <div class="flex justify-end space-x-2">

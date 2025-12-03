@@ -363,7 +363,7 @@ async function handleRenameDeck() {
             document.querySelector('h1').textContent = trimmedTitle;
         } catch (error) {
             console.error(error);
-            await uiShowAlert("Fehler", error.message);
+            await uiShowAlert(t('common.error'), error.message);
         }
     }
 }
@@ -465,6 +465,7 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
         input.id = `${idPrefix}${field.id}`;
         input.placeholder = t(field.placeholder);
         input.maxLength = 500;  // Limit input length
+        input.autocomplete = 'off';
         
         if (field.required) {
             input.required = true;
