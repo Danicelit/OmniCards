@@ -1096,14 +1096,23 @@ function shuffleArray(array) {
     }
 }
 
-function getLevelColorClass(srsLevel, consecutiveCorrect) {
+/**
+ * Returns Tailwind classes for the SRS Level Badge.
+ */
+function getLevelBadgeClasses(srsLevel) {
     switch (srsLevel) {
-        case 0: return (consecutiveCorrect === 0) ? 'bg-red-500' : 'bg-red-300';
-        case 1: return 'bg-orange-300';
-        case 2: return 'bg-yellow-200';
-        case 3: return 'bg-green-400';
-        case 4: return 'bg-green-600 text-white';
-        default: return 'bg-gray-100';
+        case 0:
+            return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800';
+        case 1:
+            return 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800';
+        case 2:
+            return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800';
+        case 3:
+            return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800';
+        case 4:
+            return 'bg-emerald-300 text-emerald-800 border-emerald-400 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800';
+        default: 
+            return 'bg-gray-100 text-gray-800 border-gray-200';
     }
 }
 
@@ -1157,9 +1166,9 @@ function renderCardList() {
     updateSortIndicators();
     
     sortedCards.forEach((card, index) => {
-        const colorClass = getLevelColorClass(card.srsLevel, card.consecutiveCorrect);
+        const badgeClass = getLevelBadgeClasses(card.srsLevel);
         const tr = document.createElement('tr');
-        tr.className = `${colorClass} transition-colors duration-300`; 
+        tr.className = "hover:bg-stone-50 dark:hover:bg-gray-700 transition-colors duration-200 border-b border-gray-100 dark:border-gray-700 last:border-0";
         
         // Fallbacks for display
         const displayFront = card.front || card.german || '?';
@@ -1184,9 +1193,13 @@ function renderCardList() {
                 <div class="${cellClass}" title="${displayExtra.replace(/"/g, '&quot;')}">${displayExtra}</div>
             </td>
             
-            <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 align-top">
-                <span class="font-bold">${card.srsLevel}</span>
-                <span class="text-xs text-gray-400 dark:text-gray-500 ml-1 block">(Streak: ${card.consecutiveCorrect || 0})</span>
+            <td class="px-4 py-3 text-sm align-top whitespace-nowrap">
+                <span class="${badgeClass} px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center">
+                    Level ${card.srsLevel}
+                </span>
+                <span class="text-xs text-gray-400 dark:text-gray-500 ml-2" title="Gewusst in Folge">
+                    🔥 ${card.consecutiveCorrect || 0}
+                </span>
             </td>
             
             <td class="px-4 py-3 text-sm align-top">
