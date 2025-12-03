@@ -1031,9 +1031,6 @@ async function handleFeedback(wasCorrect) {
         if (consecutiveCorrect >= 3 && srsLevel < 4) {
             srsLevel++;
             consecutiveCorrect = 0; 
-        } else if (oldLevel === 0) {
-            srsLevel = 1;
-            consecutiveCorrect = 0;
         }
     } else {
         consecutiveCorrect = 0;
