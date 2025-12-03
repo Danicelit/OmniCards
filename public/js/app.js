@@ -233,8 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cardListBody) cardListBody.addEventListener('click', handleCardListActions);
     if (convertPinyinBtn) convertPinyinBtn.addEventListener('click', handlePinyinConvert);
     
-    const tableHead = document.getElementById('card-table-head');
-    if (tableHead) tableHead.addEventListener('click', handleSortClick);
+    if (cardTableHeaderRow) {
+        cardTableHeaderRow.addEventListener('click', handleSortClick);
+    }
     
     if (reviewCountContainer) reviewCountContainer.addEventListener('click', buildAndShowQueueModal);
     if (rebuildQueueBtn) rebuildQueueBtn.addEventListener('click', handleRebuildQueue);
