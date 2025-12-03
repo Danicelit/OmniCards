@@ -6,7 +6,7 @@
  */
 
 import { createFirebaseService } from './storage.js';
-import { convertPinyinTones } from './utils.js';
+import { convertPinyinTones, parseRichText } from './utils.js';
 import { CardTemplates } from './templates.js';
 import { t, setLanguage } from './i18n.js';
 
@@ -481,6 +481,53 @@ function handleDataUpdate(cards) {
 }
 
 /**
+ * Creates a rich text toolbar for an input element.
+ */
+function addFormattingToolbar(input) {
+    const toolbar = document.createElement('div');
+    toolbar.className = "flex gap-1 mb-1";
+
+    const createBtn = (label, tag, colorClass = "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200") => {
+        const btn = document.createElement('button');
+        btn.type = 'button'; // Prevent form submit
+        btn.className = `px-2 py-0.5 rounded text-xs font-bold border border-gray-300 dark:border-gray-500 ${colorClass} hover:opacity-80 transition`;
+        btn.textContent = label;
+        
+        btn.onclick = () => {
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            const text = input.value;
+            const selectedText = text.substring(start, end);
+            
+            const before = text.substring(0, start);
+            const after = text.substring(end);
+            
+            const newText = `${before}[${tag}]${selectedText}[/${tag}]${after}`;
+            
+            input.value = newText;
+            input.focus();
+            
+            // Cursor positionieren (nach dem eingefügten Tag oder umschließend)
+            const newCursorPos = end + tag.length + 2; // grob geschätzt nach Start-Tag
+            input.selectionStart = newCursorPos;
+            input.selectionEnd = newCursorPos;
+        };
+        return btn;
+    };
+
+    toolbar.appendChild(createBtn('B', 'b'));
+    toolbar.appendChild(createBtn('I', 'i', 'italic'));
+    
+    // Colors
+    toolbar.appendChild(createBtn('R', 'red', 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-300'));
+    toolbar.appendChild(createBtn('B', 'blue', 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-300'));
+    toolbar.appendChild(createBtn('G', 'green', 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900 dark:text-emerald-300'));
+    toolbar.appendChild(createBtn('O', 'orange', 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900 dark:text-orange-300'));
+
+    return toolbar;
+}
+
+/**
  * Dynamically builds from inputs based on the selected template.
  * @param {string} templateKey - e.g., 'standard', 'chinese' 
  * @param {HTMLElement} containerElement - DOM element to append inputs to
@@ -492,7 +539,7 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
 
     template.fields.forEach(field => {
         const wrapper = document.createElement('div');
-        wrapper.className = "flex flex-col";
+        wrapper.className = "flex flex-col mb-4";
 
         const label = document.createElement('label');
         label.className = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
@@ -501,35 +548,57 @@ function buildFormFields(templateKey, containerElement, idPrefix = 'input-') {
         wrapper.appendChild(label);
 
         const inputGroup = document.createElement('div');
-        inputGroup.className = "flex";
-
+        
         const input = document.createElement('input');
         input.type = field.type || 'text';
         input.name = field.id; 
         input.id = `${idPrefix}${field.id}`;
         input.placeholder = t(field.placeholder);
-        input.maxLength = 500;  // Limit input length
+        input.maxLength = 500;
         input.autocomplete = 'off';
         
-        if (field.required) {
-            input.required = true;
+        if (field.required) input.required = true;
+
+        const baseInputClass = "w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500";
+
+        // 1. Toolbar generieren (für alle Textfelder, inkl. Pinyin)
+        let toolbar = null;
+        if (field.type === 'text') {
+            toolbar = addFormattingToolbar(input);
         }
 
-        input.className = "w-full p-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-blue-500 focus:border-blue-500 " + (field.hasAction ? "rounded-l-lg" : "rounded-lg");
-
-        if (field.id === 'pinyin' || field.id === 'extra') {
-             input.addEventListener('keyup', handlePinyinKeyup);
-        }
-
-        inputGroup.appendChild(input);
-
+        // 2. Layout unterscheiden
         if (field.hasAction) {
+            // LAYOUT MIT BUTTON (z.B. Pinyin): Flex Row
+            // Toolbar muss ÜBER die Gruppe, da die Gruppe horizontal ist
+            if (toolbar) wrapper.appendChild(toolbar);
+
+            inputGroup.className = "flex flex-row";
+            input.className = baseInputClass + " rounded-l-lg";
+            
+            inputGroup.appendChild(input);
+
+            // Action Button
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.textContent = t(field.actionLabel); 
-            btn.className = "px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-300 dark:hover:bg-gray-500 text-sm";
+            btn.className = "px-3 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg hover:bg-gray-300 dark:hover:bg-gray-500 text-sm font-medium transition";
             btn.onclick = () => field.actionHandler(input);
             inputGroup.appendChild(btn);
+
+        } else {
+            // STANDARD LAYOUT: Flex Col
+            // Toolbar kommt IN die Gruppe
+            inputGroup.className = "flex flex-col relative";
+            input.className = baseInputClass + " rounded-lg";
+
+            if (toolbar) inputGroup.appendChild(toolbar);
+            inputGroup.appendChild(input);
+        }
+
+        // Event Listener (Pinyin Conversion Live)
+        if (field.id === 'pinyin' || field.id === 'extra') {
+             input.addEventListener('keyup', handlePinyinKeyup);
         }
 
         wrapper.appendChild(inputGroup);
@@ -702,7 +771,7 @@ async function handleCreateDeckSubmit(e) {
 
 // --- Study & Card Logic ---
 
-function showNextCard() {
+function showNextCard(delayBackUpdate = false) {
     resetCardState(); 
     
     // CASE 1: Empty deck
@@ -743,7 +812,7 @@ function showNextCard() {
     
     if(reviewCountEl) reviewCountEl.textContent = reviewQueue.length;
 
-    renderCurrentCardUI();
+    renderCurrentCardUI(delayBackUpdate);
 }
 
 /**
@@ -853,10 +922,17 @@ async function handleUpdateCard(e) {
 
     try {
         await storageService.updateCard(currentDeckId, currentEditCardId, updatedData);
+        
+        if (currentCard && currentCard.id === currentEditCardId) {
+            currentCard = { ...currentCard, ...updatedData };
+            renderCurrentCardUI();
+        }
+
         closeEditModal();
+        await uiShowAlert(t('common.success'), t('msg.cardUpdated')); 
     } catch (error) {
         console.error(error);
-        alert("Fehler beim Aktualisieren: " + error.message);
+        await uiShowAlert("Fehler", error.message);
     }
 }
 
@@ -909,7 +985,7 @@ async function handleFeedback(wasCorrect) {
         buildReviewQueue();
     }
     
-    showNextCard();
+    showNextCard(true);
 }
 
 // --- Helper Functions ---
@@ -1130,7 +1206,7 @@ async function handleMoveItem(itemId, isFolder) {
  * Renders the current card to the DOM based on active settings.
  * Does NOT advance the queue.
  */
-function renderCurrentCardUI() {
+function renderCurrentCardUI(delayBack = false) {
     if (!currentCard) return;
 
     const template = CardTemplates[currentDeckType] || CardTemplates['standard'];
@@ -1152,10 +1228,17 @@ function renderCurrentCardUI() {
     cardFrontText.innerHTML = template.renderFront(currentCard, renderMode, extraPos);
     renderMath(cardFrontText); 
     
-    const newBackContent = template.renderBack(currentCard, renderMode, extraPos);
-    
-    cardBackContent.innerHTML = newBackContent;
-    renderMath(cardBackContent); 
+    const updateBackContent = () => {
+        const newBackContent = template.renderBack(currentCard, renderMode, extraPos);
+        cardBackContent.innerHTML = newBackContent;
+        renderMath(cardBackContent);
+    };
+
+    if (delayBack) {
+        setTimeout(updateBackContent, 250);
+    } else {
+        updateBackContent();
+    }
 }
 
 /**
@@ -1619,9 +1702,9 @@ function renderCardList() {
         if (isSelected) tr.className += " " + trBg;
         
         // Fallbacks for display
-        const displayFront = card.front || card.german || '?';
-        const displayBack = card.back || card.chinese || '?';
-        const displayExtra = card.extra || card.note || card.pinyin || '';
+        const displayFront = parseRichText(card.front);
+        const displayBack = parseRichText(card.back);
+        const displayExtra = parseRichText(card.extra || card.note || card.pinyin);
 
         // CSS class for truncating text (3 lines max)
         const cellClass = "line-clamp-2 overflow-hidden break-words max-w-[200px] max-h-[3em]";
@@ -1634,15 +1717,15 @@ function renderCardList() {
             <td class="px-2 py-3 text-sm text-gray-500 dark:text-gray-400 align-top">${index + 1}</td>
             
             <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 align-top">
-                <div class="${cellClass}" title="${displayFront.replace(/"/g, '&quot;')}">${displayFront}</div>
+                <div class="${cellClass}">${displayFront}</div> 
             </td>
             
             <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 align-top">
-                <div class="${cellClass}" title="${displayBack.replace(/"/g, '&quot;')}">${displayBack}</div>
+                <div class="${cellClass}">${displayBack}</div>
             </td>
             
             <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 align-top">
-                <div class="${cellClass}" title="${displayExtra.replace(/"/g, '&quot;')}">${displayExtra}</div>
+                <div class="${cellClass}">${displayExtra}</div>
             </td>
             
             <td class="px-4 py-3 text-sm align-top whitespace-nowrap">
