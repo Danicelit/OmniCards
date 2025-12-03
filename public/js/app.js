@@ -984,7 +984,7 @@ function renderDeckList(decks) {
 
     sortedDecks.forEach(deck => {
         const div = document.createElement('div');
-        div.className = "p-6 pr-14 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
+        div.className = "p-6 pr-14 bg-stone-100 dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition cursor-pointer border-l-4 border-blue-500 relative group";
         
         div.innerHTML = `
             <div class="relative">
@@ -1120,6 +1120,7 @@ function renderCardList() {
     sortedCards.sort((a, b) => {
         let valA, valB;
         switch (column) {
+            // Legacy fallbacks
             case 'front':
                 valA = (a.front || '').toLowerCase();
                 valB = (b.front || '').toLowerCase();
@@ -1319,7 +1320,7 @@ function renderPreviewCards(cards, deckType, totalCount = 0) {
 
     cards.forEach(card => {
         const div = document.createElement('div');
-        div.className = "p-3 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 grid grid-cols-1 sm:grid-cols-[1fr,auto,1fr] gap-1 sm:gap-4 items-center";
+        div.className = "p-3 bg-stone-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 grid grid-cols-1 sm:grid-cols-[1fr,auto,1fr] gap-1 sm:gap-4 items-center";
         
         // Legacy Fallbacks
         const front = card.front || card.german || '?';
@@ -1439,7 +1440,7 @@ function renderPublicDeckList() {
             ? "border-blue-300 dark:border-blue-700 ring-1 ring-blue-100 dark:ring-blue-900" 
             : "border-gray-200 dark:border-gray-700";
 
-        div.className = `p-6 bg-white dark:bg-gray-800 rounded-lg shadow border ${borderClass} transition-all`;
+        div.className = `p-6 bg-stone-100 dark:bg-gray-800 rounded-lg shadow border ${borderClass} transition-all`;
         
         let actionBtnHtml = '';
         
