@@ -178,18 +178,27 @@
                 </div>
             </div>
 
-            <div class="bg-stone-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200 border-b dark:border-gray-700 pb-2" data-i18n="study.addCard">Neue Karte hinzufügen</h2>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 transition-all">
+                <div id="header-add-card" class="flex justify-between items-center cursor-pointer select-none border-b dark:border-gray-700 pb-2 mb-4 group">
+                    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200" data-i18n="study.addCard">Neue Karte hinzufügen</h2>
+                    <button class="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition transform duration-200" id="icon-add-card">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                        </svg>
+                    </button>
+                </div>
 
-                <form id="add-card-form" class="space-y-4">
-                    <div id="dynamic-fields-container" class="grid grid-cols-1 gap-4">
+                <div id="content-add-card" class="overflow-hidden transition-all duration-300 ease-in-out">
+                    <form id="add-card-form" class="space-y-4">
+                        <div id="dynamic-fields-container" class="grid grid-cols-1 gap-4">
+                            </div>
+                        <div class="pt-2">
+                            <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow" data-i18n="study.btnAdd">
+                                Karte hinzufügen
+                            </button>
                         </div>
-                    <div class="pt-2">
-                        <button type="submit" class="w-full bg-blue-600 text-white font-semibold p-3 rounded-lg hover:bg-blue-700 transition-colors shadow" data-i18n="study.btnAdd">
-                            Karte hinzufügen
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
 
             <div class="bg-stone-100 dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 relative transition-all duration-300">
@@ -256,20 +265,29 @@
                 </div>
             </div>
 
-            <div class="bg-stone-100 dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <div class="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-2">
-                    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200"><span data-i18n="study.allCards">Alle meine Karten</span> (<span id="deck-count">0</span>)</h2>
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md transition-all">
+                <div id="header-card-list" class="flex justify-between items-center cursor-pointer select-none border-b dark:border-gray-700 pb-2 mb-4 group">
+                    <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">
+                        <span data-i18n="study.allCards">Alle meine Karten</span> (<span id="deck-count">0</span>)
+                    </h2>
+                    <button class="text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition transform duration-200" id="icon-card-list">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                        </svg>
+                    </button>
                 </div>
                 
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700">
-                            <tr id="card-table-header-row">
-                                </tr>
-                        </thead>
-                        <tbody id="card-list-body" class="bg-stone-100 dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                            </tbody>
-                    </table>
+                <div id="content-card-list" class="overflow-hidden transition-all duration-300 ease-in-out">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr id="card-table-header-row">
+                                    </tr>
+                            </thead>
+                            <tbody id="card-list-body" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

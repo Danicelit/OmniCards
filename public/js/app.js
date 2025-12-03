@@ -90,6 +90,12 @@ const wrongButton = document.getElementById('wrong-button');
 const reviewCountEl = document.getElementById('review-count');
 const reviewCountContainer = document.getElementById('review-count-container');
 const rebuildQueueBtn = document.getElementById('rebuild-queue-btn');
+const headerAddCard = document.getElementById('header-add-card');
+const contentAddCard = document.getElementById('content-add-card');
+const iconAddCard = document.getElementById('icon-add-card');
+const headerCardList = document.getElementById('header-card-list');
+const contentCardList = document.getElementById('content-card-list');
+const iconCardList = document.getElementById('icon-card-list');
 
 // Inputs (Reference kept for Pinyin helper, but mostly generated dynamically now)
 const inputFront = document.getElementById('input-front');
@@ -328,6 +334,14 @@ document.addEventListener('DOMContentLoaded', () => {
             setLanguage(lang);
             window.location.reload(); 
         });
+    }
+
+    // Collapsible Sections Listeners
+    if (headerAddCard) {
+        headerAddCard.addEventListener('click', () => toggleSection(contentAddCard, iconAddCard, 'omni_ui_add_open'));
+    }
+    if (headerCardList) {
+        headerCardList.addEventListener('click', () => toggleSection(contentCardList, iconCardList, 'omni_ui_list_open'));
     }
 });
 
@@ -953,6 +967,9 @@ function showStudyView(deckId, deckTitle, deckType = 'standard') {
     if (storageService.subscribeCards) {
         unsubscribeCards = storageService.subscribeCards(deckId, handleDataUpdate);
     }
+
+    initSectionState(contentAddCard, iconAddCard, 'omni_ui_add_open');
+    initSectionState(contentCardList, iconCardList, 'omni_ui_list_open');
 }
 
 /**
@@ -1263,6 +1280,36 @@ function buildAndShowQueueModal() {
 function handleRebuildQueue() {
     buildReviewQueue();
     showNextCard();
+}
+
+const ICON_MINUS = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>`;
+const ICON_PLUS = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>`;
+
+function toggleSection(contentEl, iconEl, storageKey) {
+    const isHidden = contentEl.classList.contains('hidden');
+    
+    if (isHidden) {
+        contentEl.classList.remove('hidden');
+        iconEl.innerHTML = ICON_MINUS;
+        localStorage.setItem(storageKey, 'true');
+    } else {
+        contentEl.classList.add('hidden');
+        iconEl.innerHTML = ICON_PLUS;
+        localStorage.setItem(storageKey, 'false');
+    }
+}
+
+function initSectionState(contentEl, iconEl, storageKey) {
+    const storedState = localStorage.getItem(storageKey);
+    const isOpen = storedState === null || storedState === 'true';
+
+    if (isOpen) {
+        contentEl.classList.remove('hidden');
+        iconEl.innerHTML = ICON_MINUS;
+    } else {
+        contentEl.classList.add('hidden');
+        iconEl.innerHTML = ICON_PLUS;
+    }
 }
 
 // --- Theme Logic ---
